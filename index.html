@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>診斷檢驗 EBM 計算器</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #F5F0E8;
+      --bg-card: #FFFFFF;
+      --accent: #3D7A8A;
+      --accent-hover: #2E6B7A;
+      --accent-light: rgba(61,122,138,0.08);
+      --text-primary: #2C2C2C;
+      --text-muted: #6B7280;
+      --border: #E0D9CE;
+      --danger: #C0392B;
+      --success: #27AE60;
+      --warning: #E67E22;
+      --radius: 8px;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg-primary);
+      font-family: 'Noto Sans TC', sans-serif; color: var(--text-primary);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+    header { text-align: center; padding: 1.5rem 0 0.5rem; }
+    header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    header .sub { font-size: 0.85rem; color: var(--text-muted); }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem 1.25rem 1.5rem;
+      margin-top: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .card h2 { font-size: 1.05rem; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card .hint { font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem; }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.5rem; height: 1.5rem; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 0.8rem; font-weight: 700; flex: none;
+    }
+
+    /* ── 2×2 表 ── */
+    .matrix { border-collapse: collapse; margin: 0.5rem auto 1rem; width: 100%; max-width: 520px; }
+    .matrix th, .matrix td { border: 1px solid var(--border); padding: 0.4rem; text-align: center; font-size: 0.82rem; }
+    .matrix th { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+    .matrix .corner { background: transparent; border: none; }
+    .matrix input {
+      width: 4.5rem; padding: 0.45rem; border: 1px solid var(--border); border-radius: 4px;
+      font-family: var(--mono); font-size: 0.95rem; text-align: center; min-height: 40px;
+    }
+    .matrix input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .cell-tp input, .cell-tn input { background: #f0faf4; }
+    .cell-fp input, .cell-fn input { background: #fdf3f2; }
+    .cell-label { font-size: 0.66rem; color: var(--text-muted); display: block; margin-top: 0.2rem; }
+
+    /* ── 結果格 ── */
+    .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; }
+    .metric { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.7rem; }
+    .metric .name { font-size: 0.72rem; color: var(--text-muted); }
+    .metric .val { font-size: 1.15rem; font-weight: 700; font-family: var(--mono); }
+    .metric .ci { font-size: 0.66rem; color: var(--text-muted); font-family: var(--mono); }
+    .metric.key { border-color: var(--accent); background: var(--accent-light); }
+    .metric .interp { font-size: 0.68rem; margin-top: 0.35rem; font-weight: 500; line-height: 1.35; }
+    .metric .interp.good { color: var(--accent); }
+    .metric .interp.muted { color: var(--text-muted); }
+    .metric .interp.warn { color: var(--danger); }
+
+    /* ── 載入檢驗 / 模式切換 ── */
+    .loader-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+    .loader-row select { flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.9rem; min-height: 42px; background: var(--bg-card); }
+    .mode-row { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.9rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+    .mode-row label { cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
+    #modeSS .row { margin-bottom: 0.5rem; }
+    .test-info { border: 1px solid var(--accent); background: var(--accent-light); border-radius: 6px;
+      padding: 0.75rem 0.9rem; margin: 0.75rem 0 0.5rem; font-size: 0.8rem; }
+    .test-info h3 { margin: 0 0 0.4rem; font-size: 0.92rem; color: var(--accent); }
+    .test-info dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.6rem; margin: 0; }
+    .test-info dt { color: var(--text-muted); white-space: nowrap; }
+    .test-info dd { margin: 0; }
+    .test-info .src a { color: var(--accent); word-break: break-all; }
+    .test-info .prog-tag { display: inline-block; background: var(--warning); color: #fff;
+      font-size: 0.66rem; padding: 0.1rem 0.45rem; border-radius: 4px; margin-left: 0.4rem; }
+
+    /* ── Fagan nomogram ── */
+    .nomo-wrap { text-align: center; margin-top: 0.5rem; }
+    .nomo-wrap svg { max-width: 360px; width: 100%; height: auto; cursor: ns-resize; touch-action: none; }
+
+    /* ── 白話總結 ── */
+    .summary { white-space: pre-wrap; font-family: 'Noto Sans TC', sans-serif; font-size: 0.82rem;
+      line-height: 1.7; background: #FBF8F2; border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.9rem 1rem; margin: 0 0 0.9rem; color: var(--text-primary); }
+    .copy-ok { color: var(--success); font-size: 0.78rem; margin-left: 0.5rem; }
+    input[type=range] { width: 100%; max-width: 320px; accent-color: var(--accent); }
+
+    .field { margin: 0.75rem 0; }
+    .field label { display: block; font-size: 0.82rem; margin-bottom: 0.3rem; }
+    .field input[type=number], .field select {
+      width: 100%; max-width: 240px; padding: 0.5rem; border: 1px solid var(--border);
+      border-radius: 4px; font-family: var(--mono); font-size: 0.95rem; min-height: 42px;
+    }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+
+    button.btn {
+      padding: 0.45rem 0.9rem; border: 1px solid var(--accent); background: var(--bg-card);
+      color: var(--accent); border-radius: 6px; cursor: pointer; font-size: 0.8rem; min-height: 40px;
+    }
+    button.btn:hover { background: var(--accent-light); }
+    button.btn.solid { background: var(--accent); color: #fff; }
+
+    /* ── Bayes 鏈 ── */
+    .chain { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 0.5rem;
+             font-family: var(--mono); font-size: 0.9rem; }
+    .chain .box { border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; text-align: center; }
+    .chain .box small { display: block; font-size: 0.62rem; color: var(--text-muted); font-family: 'Noto Sans TC'; }
+    .chain .box b { font-size: 1.05rem; }
+    .chain .op { font-size: 1.1rem; color: var(--accent); font-weight: 700; }
+    .chain .box.final { border-color: var(--accent); background: var(--accent-light); }
+    .delta { font-size: 0.85rem; margin-top: 0.4rem; }
+    .delta .up { color: var(--danger); } .delta .down { color: var(--success); }
+
+    .note { font-size: 0.74rem; color: var(--text-muted); background: var(--accent-light);
+            border-left: 3px solid var(--accent); padding: 0.6rem 0.8rem; border-radius: 4px; margin-top: 1rem; }
+    .disclaimer { font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 2rem; }
+    code { font-family: var(--mono); background: var(--accent-light); padding: 0.05rem 0.3rem; border-radius: 3px; }
+    @media (max-width: 480px) { .chain { font-size: 0.8rem; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>診斷檢驗 EBM 計算器</h1>
+    <p class="sub">2×2 → 概似比 (LR) → 後驗機率 ｜ Likelihood Ratios &amp; Bayesian Update</p>
+  </header>
+
+  <!-- ── 區塊 1：2×2 → 指標 ── -->
+  <section class="card">
+    <h2><span class="step-num">1</span> 計算檢驗指標</h2>
+
+    <div class="loader-row">
+      <label for="testLoader">載入檢驗：</label>
+      <select id="testLoader"><option value="">— 手動輸入 —</option></select>
+    </div>
+    <div class="mode-row">
+      輸入模式：
+      <label><input type="radio" name="mode" value="counts" checked> 2×2 人數（可算 CI/PPV/NPV）</label>
+      <label><input type="radio" name="mode" value="ss"> 直接輸入 sens/spec</label>
+    </div>
+
+    <div id="testInfo" class="test-info" style="display:none"></div>
+
+    <div id="modeSS" style="display:none">
+      <div class="row">
+        <div class="field"><label for="sensIn">敏感度 Sensitivity (%)</label>
+          <input id="sensIn" type="number" min="0" max="100" step="0.1" value="80"></div>
+        <div class="field"><label for="specIn">特異度 Specificity (%)</label>
+          <input id="specIn" type="number" min="0" max="100" step="0.1" value="70"></div>
+      </div>
+      <p class="hint">直接輸入模式：以 sens/spec 算 LR±；PPV/NPV/CI 需原始人數，故顯示「—」。</p>
+    </div>
+
+    <div id="modeCounts">
+    <p class="hint">填入四格人數（或按「載入範例」）。綠格＝判對，紅格＝判錯。</p>
+
+    <table class="matrix">
+      <tr>
+        <td class="corner"></td><td class="corner"></td>
+        <th colspan="2">真實狀態（金標準）</th>
+      </tr>
+      <tr>
+        <td class="corner"></td><td class="corner"></td>
+        <th>有病 (D+)</th><th>無病 (D−)</th>
+      </tr>
+      <tr>
+        <th rowspan="2" style="writing-mode:vertical-rl;">檢驗結果</th>
+        <th>陽性 (T+)</th>
+        <td class="cell-tp"><input id="tp" type="number" min="0" value="80"><span class="cell-label">TP 真陽</span></td>
+        <td class="cell-fp"><input id="fp" type="number" min="0" value="30"><span class="cell-label">FP 偽陽</span></td>
+      </tr>
+      <tr>
+        <th>陰性 (T−)</th>
+        <td class="cell-fn"><input id="fn" type="number" min="0" value="20"><span class="cell-label">FN 偽陰</span></td>
+        <td class="cell-tn"><input id="tn" type="number" min="0" value="70"><span class="cell-label">TN 真陰</span></td>
+      </tr>
+    </table>
+    <div style="text-align:center; margin-bottom:1rem;">
+      <button class="btn" id="loadExample">載入範例</button>
+      <button class="btn" id="clearBtn">清空</button>
+    </div>
+    </div><!-- /modeCounts -->
+
+    <div class="results" id="results"></div>
+    <div class="note">
+      <b>為什麼看 LR 不只看 PPV/NPV？</b> PPV/NPV 會隨盛行率變動；
+      <b>LR 是檢驗本身的固有屬性</b>，配上個別病人的 pre-test probability 才得到個人化結果（見區塊 2）。
+      經驗法則：LR+ &gt;10 或 LR− &lt;0.1 通常足以大幅改變臨床決策。
+    </div>
+  </section>
+
+  <!-- ── 區塊 2：Bayes 更新 ── -->
+  <section class="card">
+    <h2><span class="step-num">2</span> Bayes 更新：pre-test → post-test probability</h2>
+    <p class="hint">輸入這位病人的「檢驗前機率」，選擇檢驗結果，看機率如何被更新。</p>
+
+    <div class="row">
+      <div class="field">
+        <label for="pretest">Pre-test probability 檢驗前機率 (%)</label>
+        <input id="pretest" type="number" min="0" max="100" step="0.1" value="30">
+      </div>
+      <div class="field">
+        <label for="resultSel">檢驗結果（決定用哪個 LR）</label>
+        <select id="resultSel">
+          <option value="pos">陽性 → 套用 LR+</option>
+          <option value="neg">陰性 → 套用 LR−</option>
+        </select>
+      </div>
+      <div class="field">
+        <button class="btn" id="usePrev" title="把區塊1算出的盛行率當作 pre-test">用盛行率當 pre-test</button>
+      </div>
+    </div>
+
+    <div class="chain" id="chain"></div>
+    <div class="delta" id="delta"></div>
+
+    <div class="note">
+      <b>核心公式（勝算版貝氏定理）：</b>
+      <code>post-test odds = pre-test odds × LR</code>，
+      其中 odds = p/(1−p)，再換回機率 p = odds/(1+odds)。
+      這正是下方 <b>Fagan nomogram</b> 視覺化的運算。
+    </div>
+  </section>
+
+  <!-- ── 區塊 3：Fagan nomogram ── -->
+  <section class="card">
+    <h2><span class="step-num">3</span> Fagan nomogram（互動圖）</h2>
+    <p class="hint">拖動滑桿改變檢驗前機率，直線即時更新；中間軸被通過的位置就是套用的 LR。左軸（檢驗前）刻意上下顛倒，這樣「左點→中間 LR→右點」連成一直線就是貝氏更新。</p>
+    <div class="field">
+      <label for="pretestRange">Pre-test probability：<b id="pretestRangeVal" style="font-family:var(--mono);color:var(--accent);"></b></label>
+      <input id="pretestRange" type="range" min="0.1" max="99.9" step="0.1" value="30">
+    </div>
+    <div class="nomo-wrap" id="nomo"></div>
+  </section>
+
+  <!-- ── 區塊 4：白話總結 ── -->
+  <section class="card">
+    <h2><span class="step-num">4</span> 白話結果總結</h2>
+    <p class="hint">可直接複製（給病歷／教學）；或一鍵清除全部重來。</p>
+    <pre id="summary" class="summary"></pre>
+    <div style="text-align:center;">
+      <button class="btn solid" id="copyBtn">複製</button>
+      <button class="btn" id="clearAllBtn">清除全部</button>
+      <span class="copy-ok" id="copyOk" style="display:none;">已複製 ✓</span>
+    </div>
+  </section>
+
+  <p class="disclaimer">
+    本工具為教學／實證練習用，非臨床決策依據。計算採標準公式：LR 的 95% CI 用 log 法（Simel 1991），
+    比例的 CI 用 Wilson score，零格自動加 0.5 連續性校正。LR 強度白話分級依 Jaeschke/Guyatt/Sackett
+    (JAMA 1994) 與 McGee (J Gen Intern Med 2002)。Nomogram 原理：Fagan TJ, NEJM 1975;293:257。
+  </p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── DOM ──
+  const $ = (id) => document.getElementById(id);
+  const cells = ['tp', 'fp', 'fn', 'tn'];
+
+  // ── 數學工具 ──
+  const z = 1.96; // 95% CI
+
+  // 比例的 Wilson score 95% CI
+  function wilson(x, n) {
+    if (n === 0) return [NaN, NaN];
+    const p = x / n;
+    const d = 1 + z * z / n;
+    const c = p + z * z / (2 * n);
+    const s = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+    return [(c - s) / d, (c + s) / d];
+  }
+
+  // 取得四格（零格加 0.5 校正，供 LR 計算用）
+  function getCounts(corrected) {
+    let tp = +$('tp').value || 0, fp = +$('fp').value || 0,
+        fn = +$('fn').value || 0, tn = +$('tn').value || 0;
+    if (corrected && (tp === 0 || fp === 0 || fn === 0 || tn === 0)) {
+      tp += 0.5; fp += 0.5; fn += 0.5; tn += 0.5;
+    }
+    return { tp, fp, fn, tn };
+  }
+
+  const pct = (v) => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
+  const num = (v, d = 2) => isFinite(v) ? v.toFixed(d) : '—';
+
+  // ── LR 白話強度說明（Jaeschke/Guyatt/Sackett JAMA 1994；McGee 2002）──
+  function interpretPos(lr) {
+    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
+    if (lr < 1)   return { txt: '⚠ 異常：LR+ <1 表示陽性反而降低疾病可能，請檢查 2×2 方向', cls: 'warn' };
+    if (lr < 2)   return { txt: '很弱：陽性結果幾乎不改變判斷', cls: 'muted' };
+    if (lr < 5)   return { txt: '弱：小幅提高疾病可能，常需搭配其他證據', cls: 'muted' };
+    if (lr < 10)  return { txt: '中等：明顯提高疾病可能', cls: 'good' };
+    return { txt: '強：大幅提高疾病可能，足以 rule-in', cls: 'good' };
+  }
+  function interpretNeg(lr) {
+    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
+    if (lr > 1)    return { txt: '⚠ 異常：LR− >1 表示陰性反而提高疾病可能，請檢查 2×2 方向', cls: 'warn' };
+    if (lr > 0.5)  return { txt: '很弱：陰性結果幾乎不改變判斷', cls: 'muted' };
+    if (lr > 0.2)  return { txt: '弱：小幅降低疾病可能，常需搭配其他證據', cls: 'muted' };
+    if (lr > 0.1)  return { txt: '中等：明顯降低疾病可能', cls: 'good' };
+    return { txt: '強：大幅降低疾病可能，足以 rule-out', cls: 'good' };
+  }
+
+  // ── 區塊 1 渲染（支援 2×2 與 sens/spec 兩種輸入模式）──
+  function renderResults() {
+    const mode = document.querySelector('input[name=mode]:checked').value;
+    let sens, spec, prev = NaN, ppv = NaN, npv = NaN, acc = NaN, total = NaN;
+    let lrPos, lrNeg, sensCI = null, specCI = null, lrPosCI = null, lrNegCI = null;
+
+    if (mode === 'counts') {
+      const { tp, fp, fn, tn } = getCounts(false);
+      total = tp + fp + fn + tn;
+      sens = tp / (tp + fn);
+      spec = tn / (tn + fp);
+      ppv  = tp / (tp + fp);
+      npv  = tn / (tn + fn);
+      acc  = (tp + tn) / total;
+      prev = (tp + fn) / total;
+      const c = getCounts(true); // 校正後避免除以 0
+      lrPos = (c.tp / (c.tp + c.fn)) / (c.fp / (c.fp + c.tn));
+      lrNeg = (c.fn / (c.tp + c.fn)) / (c.tn / (c.fp + c.tn));
+      const sePos = Math.sqrt(1 / c.tp - 1 / (c.tp + c.fn) + 1 / c.fp - 1 / (c.fp + c.tn));
+      const seNeg = Math.sqrt(1 / c.fn - 1 / (c.fn + c.tp) + 1 / c.tn - 1 / (c.tn + c.fp));
+      lrPosCI = [Math.exp(Math.log(lrPos) - z * sePos), Math.exp(Math.log(lrPos) + z * sePos)];
+      lrNegCI = [Math.exp(Math.log(lrNeg) - z * seNeg), Math.exp(Math.log(lrNeg) + z * seNeg)];
+      sensCI = wilson(tp, tp + fn);
+      specCI = wilson(tn, tn + fp);
+    } else {
+      sens = (+$('sensIn').value || 0) / 100;
+      spec = (+$('specIn').value || 0) / 100;
+      lrPos = sens / (1 - spec);
+      lrNeg = (1 - sens) / spec;
+    }
+
+    const metric = (name, val, ci, key, interp) =>
+      `<div class="metric ${key ? 'key' : ''}"><div class="name">${name}</div>` +
+      `<div class="val">${val}</div>${ci ? `<div class="ci">${ci}</div>` : ''}` +
+      `${interp ? `<div class="interp ${interp.cls}">${interp.txt}</div>` : ''}</div>`;
+    const ciStr = (arr, fmt) => arr ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '直接輸入（無 CI）';
+
+    $('results').innerHTML = [
+      metric('盛行率 Prevalence', pct(prev), mode === 'counts' ? 'n = ' + total : '—'),
+      metric('敏感度 Sensitivity', pct(sens), ciStr(sensCI, pct)),
+      metric('特異度 Specificity', pct(spec), ciStr(specCI, pct)),
+      metric('陽性預測值 PPV', pct(ppv), mode === 'counts' ? '依盛行率而變' : '—'),
+      metric('陰性預測值 NPV', pct(npv), mode === 'counts' ? '依盛行率而變' : '—'),
+      metric('準確度 Accuracy', pct(acc), ''),
+      metric('LR+', num(lrPos), ciStr(lrPosCI, (v) => num(v)), true, interpretPos(lrPos)),
+      metric('LR−', num(lrNeg, 3), ciStr(lrNegCI, (v) => num(v, 3)), true, interpretNeg(lrNeg)),
+    ].join('');
+
+    return { prev, lrPos, lrNeg, sens, spec, mode };
+  }
+
+  // ── 區塊 2 渲染（Bayes 更新）──
+  function renderBayes(stats) {
+    const pPre = (+$('pretest').value || 0) / 100;
+    const useNeg = $('resultSel').value === 'neg';
+    const lr = useNeg ? stats.lrNeg : stats.lrPos;
+
+    const preOdds = pPre / (1 - pPre);
+    const postOdds = preOdds * lr;
+    const pPost = postOdds / (1 + postOdds);
+
+    const box = (label, val) => `<div class="box"><small>${label}</small><b>${val}</b></div>`;
+    $('chain').innerHTML =
+      box('pre-test 機率', pct(pPre)) +
+      '<span class="op">→</span>' +
+      box('pre-test odds', num(preOdds, 3)) +
+      '<span class="op">×</span>' +
+      box(useNeg ? 'LR−' : 'LR+', num(lr, useNeg ? 3 : 2)) +
+      '<span class="op">=</span>' +
+      box('post-test odds', num(postOdds, 3)) +
+      '<span class="op">→</span>' +
+      `<div class="box final"><small>post-test 機率</small><b>${pct(pPost)}</b></div>`;
+
+    const diff = (pPost - pPre) * 100;
+    const dir = diff >= 0 ? 'up' : 'down';
+    const arrow = diff >= 0 ? '▲' : '▼';
+    $('delta').innerHTML = `檢驗後機率變化：<span class="${dir}">${arrow} ${Math.abs(diff).toFixed(1)} 個百分點</span>` +
+      `（${pct(pPre)} → ${pct(pPost)}）`;
+
+    // 同步滑桿 + 畫 nomogram
+    $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));
+    $('pretestRangeVal').textContent = pct(pPre) + (useNeg ? '（套用 LR−）' : '（套用 LR+）');
+    drawNomogram(pPre, lr, pPost);
+
+    return { pPre, lr, pPost, useNeg };
+  }
+
+  // ── Fagan nomogram（SVG）──
+  // 數學基礎：logit(post) = logit(pre) + ln(LR)。
+  // 左軸用「顛倒的 log-odds」、中軸 LR 放在水平中點且以 ½·ln(LR) 定位，
+  // 兩端點連線必通過正確的 LR 刻度（幾何中點 = 兩端平均）。
+  const NOMO = { W: 320, H: 430, top: 42, bot: 400, s: 26, xL: 60, xM: 160, xR: 260 };
+  NOMO.C = (NOMO.top + NOMO.bot) / 2;
+  const nomoLogit = (p) => Math.log(p / (1 - p));
+  const nomoClamp = (p) => Math.min(0.999, Math.max(0.001, p));
+  const leftY  = (p) => NOMO.C + NOMO.s * nomoLogit(nomoClamp(p));  // 顛倒
+  const rightY = (p) => NOMO.C - NOMO.s * nomoLogit(nomoClamp(p));
+  const lrY    = (v) => NOMO.C - (NOMO.s / 2) * Math.log(v);
+
+  function drawNomogram(pPre, lr, pPost) {
+    const { W, H, top, bot, s, xL, xM, xR, C } = NOMO;
+    const probTicks = [0.1, 1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 99.9];
+    const lrTicks = [0.001, 0.01, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 1000];
+
+    let g = '';
+    const axis = (x) => `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="#D8CFC2" stroke-width="1.5"/>`;
+    g += axis(xL) + axis(xM) + axis(xR);
+
+    // 軸標題 + 左軸可拖曳提示
+    g += `<text x="${xL}" y="${top - 24}" text-anchor="middle" font-size="9" fill="#6B7280">檢驗前</text>`;
+    g += `<text x="${xL}" y="${top - 13}" text-anchor="middle" font-size="9" fill="#6B7280">機率 %</text>`;
+    g += `<text x="${xL}" y="${bot + 16}" text-anchor="middle" font-size="8" fill="#3D7A8A">↕ 可拖曳</text>`;
+    g += `<text x="${xM}" y="${top - 13}" text-anchor="middle" font-size="10" fill="#6B7280" font-weight="700">LR</text>`;
+    g += `<text x="${xR}" y="${top - 24}" text-anchor="middle" font-size="9" fill="#6B7280">檢驗後</text>`;
+    g += `<text x="${xR}" y="${top - 13}" text-anchor="middle" font-size="9" fill="#6B7280">機率 %</text>`;
+
+    probTicks.forEach((t) => {
+      const yl = leftY(t / 100), yr = rightY(t / 100);
+      g += `<line x1="${xL - 3}" y1="${yl}" x2="${xL}" y2="${yl}" stroke="#999"/>`;
+      g += `<text x="${xL - 7}" y="${yl + 3}" text-anchor="end" font-size="8" fill="#6B7280">${t}</text>`;
+      g += `<line x1="${xR}" y1="${yr}" x2="${xR + 3}" y2="${yr}" stroke="#999"/>`;
+      g += `<text x="${xR + 7}" y="${yr + 3}" text-anchor="start" font-size="8" fill="#6B7280">${t}</text>`;
+    });
+    lrTicks.forEach((v) => {
+      const y = lrY(v);
+      g += `<line x1="${xM - 3}" y1="${y}" x2="${xM + 3}" y2="${y}" stroke="#999"/>`;
+      g += `<text x="${xM + 7}" y="${y + 3}" text-anchor="start" font-size="8" fill="#6B7280">${v}</text>`;
+    });
+
+    // 連線 + 三個點 + 數值標籤（pre/LR/post 都標在圖上）
+    const haloR = 'style="paint-order:stroke;stroke:#fff;stroke-width:3px"';
+    if (isFinite(pPre) && isFinite(pPost) && isFinite(lr)) {
+      const ay = leftY(pPre), my = lrY(lr), by = rightY(pPost);
+      g += `<line x1="${xL}" y1="${ay}" x2="${xR}" y2="${by}" stroke="#3D7A8A" stroke-width="2"/>`;
+      [[xL, ay], [xM, my], [xR, by]].forEach(([x, y]) =>
+        g += `<circle cx="${x}" cy="${y}" r="5" fill="#3D7A8A" stroke="#fff" stroke-width="1.2"/>`);
+      // 數值標籤
+      g += `<text x="${xL + 9}" y="${ay - 7}" text-anchor="start" font-size="10" font-weight="700" fill="#3D7A8A" ${haloR}>前 ${pct(pPre)}</text>`;
+      g += `<text x="${xM + 9}" y="${my - 7}" text-anchor="start" font-size="9" font-weight="700" fill="#3D7A8A" ${haloR}>${num(lr, lr < 1 ? 3 : 2)}</text>`;
+      g += `<text x="${xR - 9}" y="${by - 9}" text-anchor="end" font-size="12" font-weight="700" fill="#C0392B" ${haloR}>後 ${pct(pPost)}</text>`;
+    }
+
+    $('nomo').innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fagan nomogram">${g}</svg>`;
+  }
+
+  // ── 白話結果總結 ──
+  let currentTest = null;
+  function renderSummary(s, b) {
+    const ip = interpretPos(s.lrPos), ineg = interpretNeg(s.lrNeg);
+    const target = (currentTest && currentTest.target) || '目標疾病';
+    const diff = (b.pPost - b.pPre) * 100;
+    const dirWord = diff >= 0 ? '提高' : '降低';
+
+    let verdict;
+    if (!isFinite(b.pPost)) {
+      verdict = '（請先輸入資料）';
+    } else if (b.useNeg) {
+      const strength = s.lrNeg <= 0.1 ? '屬強力排除證據' : s.lrNeg <= 0.2 ? '屬中等排除證據' : '排除力有限，須綜合其他資訊';
+      verdict = `陰性結果（LR− ${num(s.lrNeg, 3)}）將「${target}」的可能性由 ${pct(b.pPre)} 降至 ${pct(b.pPost)}，${strength}。`;
+    } else {
+      const strength = s.lrPos >= 10 ? '屬強力支持診斷' : s.lrPos >= 5 ? '屬中等支持' : '支持力有限，須綜合其他資訊';
+      verdict = `陽性結果（LR+ ${num(s.lrPos)}）將「${target}」的可能性由 ${pct(b.pPre)} 提高至 ${pct(b.pPost)}，${strength}。`;
+    }
+
+    const L = [];
+    L.push('【診斷檢驗 EBM 結果摘要】');
+    L.push('檢驗：' + (currentTest ? `${currentTest.nameZh}（${currentTest.target}）` : '自訂輸入'));
+    L.push(`敏感度 ${pct(s.sens)}、特異度 ${pct(s.spec)}`);
+    L.push(`LR+ = ${num(s.lrPos)}（${ip.txt}）`);
+    L.push(`LR− = ${num(s.lrNeg, 3)}（${ineg.txt}）`);
+    L.push('');
+    L.push(`貝氏更新（檢驗結果：${b.useNeg ? '陰性' : '陽性'}）`);
+    L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}（${dirWord} ${Math.abs(diff).toFixed(1)} 個百分點）`);
+    L.push('');
+    L.push('判讀：' + verdict);
+    if (currentTest) L.push('來源：' + currentTest.source);
+    L.push('');
+    L.push('※ 教學／實證練習用，非臨床決策依據。');
+    $('summary').textContent = L.join('\n');
+  }
+
+  // ── 重算 ──
+  function recalc() {
+    const stats = renderResults();
+    const bayes = renderBayes(stats);
+    renderSummary(stats, bayes);
+  }
+
+  // ── 事件 ──
+  cells.forEach((id) => $(id).addEventListener('input', recalc));
+  $('pretest').addEventListener('input', recalc);
+  $('resultSel').addEventListener('change', recalc);
+  $('pretestRange').addEventListener('input', () => {
+    $('pretest').value = $('pretestRange').value;
+    recalc();
+  });
+  $('usePrev').addEventListener('click', () => {
+    const stats = renderResults();
+    if (!isFinite(stats.prev)) return; // sens/spec 模式無盛行率
+    $('pretest').value = (stats.prev * 100).toFixed(1);
+    recalc();
+  });
+  $('loadExample').addEventListener('click', () => {
+    $('tp').value = 80; $('fp').value = 30; $('fn').value = 20; $('tn').value = 70;
+    $('pretest').value = 30; recalc();
+  });
+  $('clearBtn').addEventListener('click', () => {
+    cells.forEach((id) => $(id).value = '');
+    recalc();
+  });
+
+  // ── 輸入模式切換 ──
+  document.querySelectorAll('input[name=mode]').forEach((r) =>
+    r.addEventListener('change', () => {
+      const ss = document.querySelector('input[name=mode]:checked').value === 'ss';
+      $('modeSS').style.display = ss ? '' : 'none';
+      $('modeCounts').style.display = ss ? 'none' : '';
+      recalc();
+    }));
+  $('sensIn').addEventListener('input', recalc);
+  $('specIn').addEventListener('input', recalc);
+
+  // ── 載入檢驗庫（tests.json）──
+  const isProg = (t) => /預後|mortality/i.test(t.target || '');
+  let testsData = [];
+  fetch('tests.json')
+    .then((r) => r.json())
+    .then((data) => {
+      testsData = data.tests || [];
+      const dx = [], prog = [];
+      testsData.forEach((t, i) => {
+        const opt = `<option value="${i}">${t.nameZh}（LR+ ${t.lrPos} / LR− ${t.lrNeg}）</option>`;
+        (isProg(t) ? prog : dx).push(opt);
+      });
+      $('testLoader').insertAdjacentHTML('beforeend',
+        `<optgroup label="診斷 Diagnosis">${dx.join('')}</optgroup>` +
+        (prog.length ? `<optgroup label="預後 Prognosis">${prog.join('')}</optgroup>` : ''));
+    })
+    .catch(() => {});
+
+  $('testLoader').addEventListener('change', function () {
+    if (this.value === '') { currentTest = null; $('testInfo').style.display = 'none'; recalc(); return; }
+    const t = testsData[+this.value];
+    if (!t) return;
+    currentTest = t;
+    // 切到 sens/spec 模式並帶入數值
+    document.querySelector('input[name=mode][value=ss]').checked = true;
+    $('modeSS').style.display = ''; $('modeCounts').style.display = 'none';
+    $('sensIn').value = (t.sens * 100).toFixed(1);
+    $('specIn').value = (t.spec * 100).toFixed(1);
+    if (isFinite(t.pretestTypical)) $('pretest').value = (t.pretestTypical * 100).toFixed(1);
+    $('resultSel').value = (t.category === 'rule-out') ? 'neg' : 'pos';
+    // 資訊卡
+    $('testInfo').style.display = '';
+    $('testInfo').innerHTML =
+      `<h3>${t.nameZh} <span style="font-weight:400;color:var(--text-muted)">${t.name}</span>` +
+      `${isProg(t) ? '<span class="prog-tag">預後／非診斷</span>' : ''}</h3>` +
+      '<dl>' +
+      `<dt>用途</dt><dd>${t.target}</dd>` +
+      `<dt>閾值</dt><dd>${t.threshold}</dd>` +
+      `<dt>族群</dt><dd>${t.population}</dd>` +
+      `<dt>sens/spec</dt><dd>${pct(t.sens)} / ${pct(t.spec)}（LR+ ${t.lrPos}、LR− ${t.lrNeg}）</dd>` +
+      `<dt>出處</dt><dd class="src">${t.source} <a href="${t.sourceUrl}" target="_blank" rel="noopener">原文 ↗</a></dd>` +
+      `<dt>註記</dt><dd>${t.note}</dd>` +
+      '</dl>';
+    recalc();
+  });
+
+  // ── 左軸拖曳設定 pre-test ──
+  let dragging = false;
+  function nomoSetFromClientY(clientY) {
+    const svg = $('nomo').querySelector('svg');
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const svgY = (clientY - rect.top) / rect.height * NOMO.H;
+    const p = 1 / (1 + Math.exp(-(svgY - NOMO.C) / NOMO.s)); // invlogit
+    $('pretest').value = (nomoClamp(p) * 100).toFixed(1);
+    recalc();
+  }
+  $('nomo').addEventListener('pointerdown', (e) => {
+    const svg = $('nomo').querySelector('svg');
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const svgX = (e.clientX - rect.left) / rect.width * NOMO.W;
+    if (svgX > (NOMO.xL + NOMO.xM) / 2) return; // 僅左軸區可拖
+    dragging = true;
+    nomoSetFromClientY(e.clientY);
+    e.preventDefault();
+  });
+  window.addEventListener('pointermove', (e) => { if (dragging) nomoSetFromClientY(e.clientY); });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  // ── 複製 / 清除全部 ──
+  $('copyBtn').addEventListener('click', () => {
+    const txt = $('summary').textContent;
+    const done = () => { const o = $('copyOk'); o.style.display = ''; setTimeout(() => o.style.display = 'none', 2000); };
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+  $('clearAllBtn').addEventListener('click', () => {
+    currentTest = null;
+    $('testLoader').value = '';
+    $('testInfo').style.display = 'none';
+    document.querySelector('input[name=mode][value=counts]').checked = true;
+    $('modeCounts').style.display = ''; $('modeSS').style.display = 'none';
+    cells.forEach((id) => $(id).value = '');
+    $('sensIn').value = ''; $('specIn').value = '';
+    $('pretest').value = '';
+    $('resultSel').value = 'pos';
+    recalc();
+  });
+
+  recalc();
+})();
+</script>
+</body>
+</html>
