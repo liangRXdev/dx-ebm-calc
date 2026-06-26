@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>診斷檢驗 EBM 計算器</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#3D7A8A">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Dx EBM">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -269,6 +276,13 @@
 <script>
 (function () {
   'use strict';
+
+  // ── PWA: 註冊 Service Worker（僅快取應用 shell）──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
 
   // ── DOM ──
   const $ = (id) => document.getElementById(id);
