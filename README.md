@@ -3,6 +3,7 @@
 > Diagnostic Test EBM Calculator — 梁哲嘉藥師
 
 互動式診斷檢驗實證計算器：由 2×2 表或 sens/spec 算出概似比 (LR)，以勝算版貝氏定理更新檢驗前→後機率，並用互動 Fagan nomogram 視覺化。教學與實證讀書會雙用，繁體中文。
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Click%20Here-blue?style=for-the-badge)](https://liangrxdev.github.io/dx-ebm-calc/)
 
 ## 功能
 
