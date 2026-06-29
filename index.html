@@ -97,7 +97,7 @@
 
     /* ── Fagan nomogram ── */
     .nomo-wrap { text-align: center; margin-top: 0.5rem; }
-    .nomo-wrap svg { max-width: 360px; width: 100%; height: auto; cursor: ns-resize; touch-action: none; }
+    .nomo-wrap svg { max-width: 360px; width: 100%; height: auto; pointer-events: none; }
 
     /* ── 白話總結 ── */
     .summary { white-space: pre-wrap; font-family: 'Noto Sans TC', sans-serif; font-size: 0.82rem;
@@ -246,7 +246,7 @@
   <!-- ── 區塊 3：Fagan nomogram ── -->
   <section class="card">
     <h2><span class="step-num">3</span> Fagan nomogram（互動圖）</h2>
-    <p class="hint">拖動滑桿改變檢驗前機率，直線即時更新；中間軸被通過的位置就是套用的 LR。左軸（檢驗前）刻意上下顛倒，這樣「左點→中間 LR→右點」連成一直線就是貝氏更新。</p>
+    <p class="hint">拖動上方滑桿改變檢驗前機率，下方直線即時更新（圖為唯讀展示）；中間軸被通過的位置就是套用的 LR。左軸（檢驗前）刻意上下顛倒，這樣「左點→中間 LR→右點」連成一直線就是貝氏更新。</p>
     <div class="field">
       <label for="pretestRange">Pre-test probability：<b id="pretestRangeVal" style="font-family:var(--mono);color:var(--accent);"></b></label>
       <input id="pretestRange" type="range" min="0.1" max="99.9" step="0.1" value="30">
@@ -443,7 +443,6 @@
     // 軸標題 + 左軸可拖曳提示
     g += `<text x="${xL}" y="${top - 24}" text-anchor="middle" font-size="9" fill="#6B7280">檢驗前</text>`;
     g += `<text x="${xL}" y="${top - 13}" text-anchor="middle" font-size="9" fill="#6B7280">機率 %</text>`;
-    g += `<text x="${xL}" y="${bot + 16}" text-anchor="middle" font-size="8" fill="#3D7A8A">↕ 可拖曳</text>`;
     g += `<text x="${xM}" y="${top - 13}" text-anchor="middle" font-size="10" fill="#6B7280" font-weight="700">LR</text>`;
     g += `<text x="${xR}" y="${top - 24}" text-anchor="middle" font-size="9" fill="#6B7280">檢驗後</text>`;
     g += `<text x="${xR}" y="${top - 13}" text-anchor="middle" font-size="9" fill="#6B7280">機率 %</text>`;
@@ -601,29 +600,7 @@
     recalc();
   });
 
-  // ── 左軸拖曳設定 pre-test ──
-  let dragging = false;
-  function nomoSetFromClientY(clientY) {
-    const svg = $('nomo').querySelector('svg');
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const svgY = (clientY - rect.top) / rect.height * NOMO.H;
-    const p = 1 / (1 + Math.exp(-(svgY - NOMO.C) / NOMO.s)); // invlogit
-    $('pretest').value = (nomoClamp(p) * 100).toFixed(1);
-    recalc();
-  }
-  $('nomo').addEventListener('pointerdown', (e) => {
-    const svg = $('nomo').querySelector('svg');
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const svgX = (e.clientX - rect.left) / rect.width * NOMO.W;
-    if (svgX > (NOMO.xL + NOMO.xM) / 2) return; // 僅左軸區可拖
-    dragging = true;
-    nomoSetFromClientY(e.clientY);
-    e.preventDefault();
-  });
-  window.addEventListener('pointermove', (e) => { if (dragging) nomoSetFromClientY(e.clientY); });
-  window.addEventListener('pointerup', () => { dragging = false; });
+  // ── nomogram 為唯讀展示，pre-test 一律由上方滑桿控制（避免手機誤觸） ──
 
   // ── 複製 / 清除全部 ──
   $('copyBtn').addEventListener('click', () => {

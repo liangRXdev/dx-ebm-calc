@@ -2,7 +2,7 @@
  * 快取應用 shell（index.html / tests.json / manifest / 圖示）。
  * Google Fonts 等跨來源資源不攔截，一律走網路。
  */
-const CACHE = 'dx-ebm-calc-v1';
+const CACHE = 'dx-ebm-calc-v2';
 const SHELL = [
   './',
   'index.html',
