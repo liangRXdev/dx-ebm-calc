@@ -1,42 +1,44 @@
-# 診斷檢驗 EBM 計算器
+# Diagnostic Test EBM Calculator (診斷檢驗 EBM 計算器)
 
-> Diagnostic Test EBM Calculator — 梁哲嘉藥師
+**English** | [繁體中文](README.zh-TW.md)
 
-互動式診斷檢驗實證計算器：由 2×2 表或 sens/spec 算出概似比 (LR)，以勝算版貝氏定理更新檢驗前→後機率，並用互動 Fagan nomogram 視覺化。教學與實證讀書會雙用，繁體中文。
+> Diagnostic Test EBM Calculator — by pharmacist Che-chia Liang (梁哲嘉)
+
+An interactive evidence-based calculator for diagnostic tests: computes likelihood ratios (LR) from a 2×2 table or sensitivity/specificity, updates pre-test → post-test probability with the odds form of Bayes' theorem, and visualizes it on an interactive Fagan nomogram. Built for both teaching and EBM journal clubs; the interface is in Traditional Chinese.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Click%20Here-blue?style=for-the-badge)](https://liangrxdev.github.io/dx-ebm-calc/)
 
-## 功能
+## Features
 
-- **指標計算**：由 2×2 人數或直接輸入 sens/spec → 敏感度、特異度、PPV、NPV、準確度、LR+、LR−（2×2 模式附 95% CI）
-- **LR 白話分級**：依 LR 大小自動標示「強／中／弱 rule-in / rule-out」（Jaeschke/McGee 標準）
-- **Bayes 更新**：pre-test → post-test probability，逐步顯示 odds 鏈
-- **互動 Fagan nomogram**：拖曳左軸即時更新，圖上標示前/後機率
-- **常見檢驗 LR 速查庫**（`tests.json`）：16 筆附原始文獻出處，分「診斷／預後」載入
-- **白話結果總結**：一鍵複製（給病歷／教學）、清除全部
+- **Test metrics**: from 2×2 counts or directly entered sens/spec → sensitivity, specificity, PPV, NPV, accuracy, LR+, LR− (95% CIs in 2×2 mode)
+- **Plain-language LR grading**: automatically labels "strong / moderate / weak rule-in / rule-out" by LR magnitude (Jaeschke/McGee criteria)
+- **Bayesian update**: pre-test → post-test probability, showing the odds chain step by step
+- **Interactive Fagan nomogram**: drag the left axis for live updates; pre- and post-test probabilities are marked on the chart
+- **Quick-reference LR library for common tests** (`tests.json`): 16 entries with original citations, loadable by "diagnostic / prognostic"
+- **Plain-language summary**: one-click copy (for notes / teaching), clear all
 
-## 技術
+## Tech
 
-- 單檔 `index.html`（vanilla JS + SVG，無框架、無相依套件）
-- 資料：`tests.json`（檢驗速查庫，單一來源、可擴充）
-- 風格：與個人臨床工具集 (pharmacy-portal) 一致的 MUJI 配色
+- Single-file `index.html` (vanilla JS + SVG, no framework, no dependencies)
+- Data: `tests.json` (test library; single source of truth, extensible)
+- Style: MUJI-like palette consistent with the personal clinical tool collection (pharmacy-portal)
 
-## 方法學參考
+## Methodology References
 
-- 概似比與診斷檢驗：Deeks JJ, Altman DG. *BMJ* 2004;329:168-9
-- LR 強度分級：Jaeschke/Guyatt/Sackett *JAMA* 1994；McGee *J Gen Intern Med* 2002
-- Fagan nomogram：Fagan TJ. *NEJM* 1975;293:257
-- 各檢驗 sens/spec 出處詳見 `tests.json` 每筆 `source` 欄位
+- Likelihood ratios and diagnostic tests: Deeks JJ, Altman DG. *BMJ* 2004;329:168-9
+- LR strength grading: Jaeschke/Guyatt/Sackett *JAMA* 1994; McGee *J Gen Intern Med* 2002
+- Fagan nomogram: Fagan TJ. *NEJM* 1975;293:257
+- Sources for each test's sens/spec are in the `source` field of each `tests.json` entry
 
-## 計算公式
+## Formulas
 
-- LR+ = sens/(1−spec)；LR− = (1−sens)/spec
-- post-test odds = pre-test odds × LR；odds = p/(1−p)
-- 95% CI：LR 用 log 法 (Simel 1991)、比例用 Wilson score；零格加 0.5 連續性校正
+- LR+ = sens/(1−spec); LR− = (1−sens)/spec
+- post-test odds = pre-test odds × LR; odds = p/(1−p)
+- 95% CI: log method for LR (Simel 1991), Wilson score for proportions; zero cells get a 0.5 continuity correction
 
-## 免責
+## Disclaimer
 
-本工具為**教學／實證練習用，非臨床決策依據**。檢驗 LR 隨研究族群與 cutoff 而變，臨床請回原文確認。
+This tool is **for teaching and EBM practice only, not a basis for clinical decisions**. Test LRs vary with the study population and cutoff; check the original papers before clinical use.
 
 ## License
 
