@@ -83,6 +83,8 @@
     .metric .interp.good { color: var(--accent); }
     .metric .interp.muted { color: var(--text-muted); }
     .metric .interp.warn { color: var(--danger); }
+    .input-warn { color: var(--danger); font-size: 0.78rem; margin: 0.5rem 0 0; }
+    .input-warn:empty { display: none; }
 
     /* ── 載入檢驗 / 模式切換 ── */
     .loader-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
@@ -234,6 +236,7 @@
     </div><!-- /modeCounts -->
 
     <div class="results" id="results"></div>
+    <p class="input-warn" id="inputWarn" role="alert"></p>
     <div class="note">
       <b>為什麼看 LR 不只看 PPV/NPV？</b> PPV/NPV 會隨盛行率變動；
       <b>LR 是檢驗本身的固有屬性</b>，配上個別病人的 pre-test probability 才得到個人化結果（見區塊 2）。
@@ -263,6 +266,7 @@
       </div>
     </div>
 
+    <p class="input-warn" id="pretestWarn" role="alert"></p>
     <div class="chain" id="chain"></div>
     <div class="delta" id="delta"></div>
 
@@ -347,10 +351,11 @@
       `<div class="metric ${key ? 'key' : ''}"><div class="name">${name}</div>` +
       `<div class="val">${val}</div>${ci ? `<div class="ci">${ci}</div>` : ''}` +
       `${interp ? `<div class="interp ${interp.cls}">${interp.txt}</div>` : ''}</div>`;
-    const ciStr = (arr, fmt) => arr ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '直接輸入（無 CI）';
+    const ciStr = (arr, fmt) => !arr ? '直接輸入（無 CI）'
+      : isFinite(arr[0]) && isFinite(arr[1]) ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '—';
 
     setMetrics($('results'), [
-      metric('盛行率 Prevalence', pct(r.prev), mode === 'counts' ? 'n = ' + r.total : '—'),
+      metric('盛行率 Prevalence', pct(r.prev), mode === 'counts' && isFinite(r.total) ? 'n = ' + r.total : '—'),
       metric('敏感度 Sensitivity', pct(r.sens), ciStr(r.sensCI, pct)),
       metric('特異度 Specificity', pct(r.spec), ciStr(r.specCI, pct)),
       metric('陽性預測值 PPV', pct(r.ppv), mode === 'counts' ? '依盛行率而變' : '—'),
@@ -359,6 +364,7 @@
       metric('LR+', num(r.lrPos), ciStr(r.lrPosCI, (v) => num(v)), true, E.interpretPos(r.lrPos)),
       metric('LR−', num(r.lrNeg, 3), ciStr(r.lrNegCI, (v) => num(v, 3)), true, E.interpretNeg(r.lrNeg)),
     ].join(''));
+    $('inputWarn').textContent = r.errors.join('；');
 
     return r;
   }
@@ -367,7 +373,8 @@
   function renderBayes(stats) {
     const useNeg = $('resultSel').value === 'neg';
     const lr = useNeg ? stats.lrNeg : stats.lrPos;
-    const { pPre, preOdds, postOdds, pPost } = E.bayes($('pretest').value, lr);
+    const { pPre, preOdds, postOdds, pPost, error } = E.bayes($('pretest').value, lr);
+    $('pretestWarn').textContent = error;
 
     const box = (label, val) => `<div class="box"><small>${label}</small><b>${val}</b></div>`;
     $('chain').innerHTML =
@@ -387,7 +394,7 @@
       : '檢驗後機率變化：—';
 
     // 同步滑桿 + 畫 nomogram
-    $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));
+    if (isFinite(pPre)) $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));
     $('pretestRangeVal').textContent = pct(pPre) + (useNeg ? '（套用 LR−）' : '（套用 LR+）');
     drawNomogram(pPre, lr, pPost);
 

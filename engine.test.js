@@ -237,5 +237,45 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C1 總結 post 100%', txt.includes('檢驗後機率 100.0%'), true);
 })();
 
+// ── C2. 輸入驗證：空白、負值、小數、非數字、百分比超出 0–100 ──
+// 重現（修正前）：清除全部後四格空白 → 被當 0、+0.5 校正後顯示 LR± = 1.00（CI 0.06–15.99）；
+// TP = −5 → sens 166.7%、LR− −0.889 卻分級為「強：rule-out」；sens 150% → LR− −0.714 亦同
+(() => {
+  const blank = E.fromCounts({ tp: '', fp: '', fn: '', tn: '' });
+  eq('C2 全空白 LR+ —', blank.lrPos, NaN);
+  eq('C2 全空白 LR− —', blank.lrNeg, NaN);
+  eq('C2 全空白 LR+ CI —', blank.lrPosCI[0], NaN);
+  eq('C2 全空白 不算錯誤', blank.errors.length, 0);
+  const oneBlank = E.fromCounts({ tp: '80', fp: '30', fn: '', tn: '70' });
+  eq('C2 單格空白 sens —', oneBlank.sens, NaN);
+  eq('C2 單格空白 LR+ —', oneBlank.lrPos, NaN);
+  const neg = E.fromCounts({ tp: '-5', fp: '3', fn: '2', tn: '9' });
+  eq('C2 負值 sens —', neg.sens, NaN);
+  eq('C2 負值 LR− —', neg.lrNeg, NaN);
+  eq('C2 負值 錯誤訊息', neg.errors.some((m) => m.includes('TP')), true);
+  const dec = E.fromCounts({ tp: '2.5', fp: '3', fn: '2', tn: '9' });
+  eq('C2 小數人數 LR+ —', dec.lrPos, NaN);
+  eq('C2 小數人數 錯誤訊息', dec.errors.some((m) => m.includes('TP')), true);
+  eq('C2 非數字 —', E.fromCounts({ tp: 'abc', fp: 3, fn: 2, tn: 9 }).sens, NaN);
+  eq('C2 0 為合法', E.fromCounts({ tp: '0', fp: '3', fn: '2', tn: '9' }).sens, 0);
+  eq('C2 數字型別仍可用', E.fromCounts({ tp: 80, fp: 30, fn: 20, tn: 70 }).sens, 0.8);
+
+  const over = E.fromSensSpec('150', '70');
+  eq('C2 sens 150% LR− —', over.lrNeg, NaN);
+  eq('C2 sens 150% 錯誤訊息', over.errors.some((m) => m.includes('敏感度')), true);
+  eq('C2 sens −10% LR+ —', E.fromSensSpec('-10', '70').lrPos, NaN);
+  eq('C2 spec 101% LR+ —', E.fromSensSpec('80', '101').lrPos, NaN);
+  const ssBlank = E.fromSensSpec('', '70');
+  eq('C2 sens 空白 LR+ —', ssBlank.lrPos, NaN);
+  eq('C2 sens 空白 不算錯誤', ssBlank.errors.length, 0);
+  eq('C2 sens 0% 合法', E.fromSensSpec('0', '70').lrPos, 0);
+
+  eq('C2 pre-test 空白 → —', E.bayes('', 2).pPost, NaN);
+  eq('C2 pre-test 150% → —', E.bayes('150', 2).pPost, NaN);
+  eq('C2 pre-test −1% → —', E.bayes('-1', 2).pPost, NaN);
+  eq('C2 pre-test 150% 錯誤訊息', /檢驗前機率/.test(E.bayes('150', 2).error), true);
+  eq('C2 pre-test 空白 不算錯誤', E.bayes('', 2).error, '');
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

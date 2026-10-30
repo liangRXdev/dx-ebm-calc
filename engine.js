@@ -19,10 +19,21 @@
   const z = 1.96; // 95% CI
 
   // ── 輸入解析 ──
-  // 欄位值（字串或數字）→ 數字；空白與非數字視為 0
-  function parseNum(v) {
-    return +v || 0;
+  // 欄位值（字串或數字）→ 數字。空白回 NaN 但不算錯誤（尚未填）；
+  // 不合法（非數字、負值、人數非整數、百分比超出 0–100）回 NaN 並由呼叫端列出錯誤。
+  const isBlank = (v) => v == null || String(v).trim() === '';
+  function parseCount(v) {
+    if (isBlank(v)) return NaN;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 ? n : NaN;
   }
+  // 百分比 → 比例 0–1
+  function parsePct(v) {
+    if (isBlank(v)) return NaN;
+    const n = Number(v);
+    return n >= 0 && n <= 100 ? n / 100 : NaN;
+  }
+  const badInput = (v, parsed) => !isBlank(v) && Number.isNaN(parsed);
 
   // ── 顯示格式 ──
   const pct = (v) => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
@@ -48,9 +59,24 @@
     return { tp, fp, fn, tn };
   }
 
+  const NAN2 = () => [NaN, NaN];
+  const emptyCounts = (errors) => ({
+    mode: 'counts', total: NaN, prev: NaN, sens: NaN, spec: NaN, ppv: NaN, npv: NaN, acc: NaN,
+    lrPos: NaN, lrNeg: NaN, sensCI: NAN2(), specCI: NAN2(), lrPosCI: NAN2(), lrNegCI: NAN2(), errors,
+  });
+
   // ── 2×2 人數 → 指標 ──
+  // 四格須皆為 ≥0 整數；任一格空白或不合法 → 全部指標為 NaN（顯示「—」）
   function fromCounts(raw) {
-    const tp = parseNum(raw.tp), fp = parseNum(raw.fp), fn = parseNum(raw.fn), tn = parseNum(raw.tn);
+    const keys = ['tp', 'fp', 'fn', 'tn'];
+    const v = {};
+    const errors = [];
+    keys.forEach((k) => {
+      v[k] = parseCount(raw[k]);
+      if (badInput(raw[k], v[k])) errors.push(`${k.toUpperCase()} 須為 ≥ 0 的整數`);
+    });
+    if (keys.some((k) => Number.isNaN(v[k]))) return emptyCounts(errors);
+    const { tp, fp, fn, tn } = v;
     const total = tp + fp + fn + tn;
     const sens = tp / (tp + fn);
     const spec = tn / (tn + fp);
@@ -69,18 +95,23 @@
       specCI: wilson(tn, tn + fp),
       lrPosCI: [Math.exp(Math.log(lrPos) - z * sePos), Math.exp(Math.log(lrPos) + z * sePos)],
       lrNegCI: [Math.exp(Math.log(lrNeg) - z * seNeg), Math.exp(Math.log(lrNeg) + z * seNeg)],
+      errors,
     };
   }
 
   // ── 直接輸入 sens/spec（百分比）→ LR±；PPV/NPV/CI 需原始人數，故為 NaN/null ──
   function fromSensSpec(sensPct, specPct) {
-    const sens = parseNum(sensPct) / 100;
-    const spec = parseNum(specPct) / 100;
+    const sens = parsePct(sensPct);
+    const spec = parsePct(specPct);
+    const errors = [];
+    if (badInput(sensPct, sens)) errors.push('敏感度須介於 0–100%');
+    if (badInput(specPct, spec)) errors.push('特異度須介於 0–100%');
     return {
       mode: 'ss', total: NaN, prev: NaN, sens, spec, ppv: NaN, npv: NaN, acc: NaN,
       lrPos: sens / (1 - spec),
       lrNeg: (1 - sens) / spec,
       sensCI: null, specCI: null, lrPosCI: null, lrNegCI: null,
+      errors,
     };
   }
 
@@ -115,9 +146,10 @@
     return a / (a + 1 - pPre);
   }
   function bayes(pretestPct, lr) {
-    const pPre = parseNum(pretestPct) / 100;
+    const pPre = parsePct(pretestPct);
     const pPost = postProb(pPre, lr);
-    return { pPre, preOdds: odds(pPre), postOdds: odds(pPost), pPost };
+    const error = badInput(pretestPct, pPre) ? '檢驗前機率須介於 0–100%' : '';
+    return { pPre, preOdds: odds(pPre), postOdds: odds(pPost), pPost, error };
   }
 
   // ── Fagan nomogram 幾何 ──
@@ -205,7 +237,7 @@
   }
 
   return {
-    z, parseNum, pct, num, wilson, correctCounts, fromCounts, fromSensSpec,
+    z, parseCount, parsePct, pct, num, wilson, correctCounts, fromCounts, fromSensSpec,
     interpretPos, interpretNeg, postProb, bayes, deltaParts,
     NOMO, logit, leftY, rightY, lrY, probFromLeftY, probFromRightY, lrFromY, nomoPoints,
     isPrognostic, presetFromTest, summaryText,
