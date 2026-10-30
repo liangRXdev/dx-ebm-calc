@@ -277,5 +277,35 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C2 pre-test 空白 不算錯誤', E.bayes('', 2).error, '');
 })();
 
+// ── C3. 整欄或整列為 0（除以零）──
+// 重現（修正前）：TP = FN = 0（無有病者）→ sens 顯示「—」，但 +0.5 校正後 LR+ 仍顯示 2.36；
+// TP = FP = 0（無人陽性）→ LR+ 原式為 0/0，校正後卻顯示 3.50
+(() => {
+  const noDz = E.fromCounts({ tp: 0, fp: 5, fn: 0, tn: 20 });
+  eq('C3 無有病者 sens —', noDz.sens, NaN);
+  eq('C3 無有病者 LR+ —', noDz.lrPos, NaN);
+  eq('C3 無有病者 LR− —', noDz.lrNeg, NaN);
+  eq('C3 無有病者 LR+ CI —', noDz.lrPosCI[1], NaN);
+  eq('C3 無有病者 說明', noDz.errors.some((m) => m.includes('TP + FN = 0')), true);
+  const noHealthy = E.fromCounts({ tp: 10, fp: 0, fn: 5, tn: 0 });
+  eq('C3 無無病者 spec —', noHealthy.spec, NaN);
+  eq('C3 無無病者 LR+ —', noHealthy.lrPos, NaN);
+  eq('C3 無無病者 LR− —', noHealthy.lrNeg, NaN);
+  const noPos = E.fromCounts({ tp: 0, fp: 0, fn: 5, tn: 20 });
+  eq('C3 無人陽性 LR+ (0/0) —', noPos.lrPos, NaN);
+  eq('C3 無人陽性 LR+ CI —', noPos.lrPosCI[0], NaN);
+  eq('C3 無人陽性 LR− 仍可算', isFinite(noPos.lrNeg), true);
+  eq('C3 無人陽性 PPV —', noPos.ppv, NaN);
+  const noNeg = E.fromCounts({ tp: 10, fp: 5, fn: 0, tn: 0 });
+  eq('C3 無人陰性 LR− (0/0) —', noNeg.lrNeg, NaN);
+  eq('C3 無人陰性 LR+ 仍可算', isFinite(noNeg.lrPos), true);
+  const zero = E.fromCounts({ tp: 0, fp: 0, fn: 0, tn: 0 });
+  eq('C3 全 0 LR+ —', zero.lrPos, NaN);
+  eq('C3 全 0 prev —', zero.prev, NaN);
+  // sens/spec 模式的對應情形：sens 0 / spec 100 → LR+ 0/0
+  eq('C3 sens 0 spec 100 LR+ —', E.fromSensSpec('0', '100').lrPos, NaN);
+  eq('C3 sens 100 spec 0 LR− —', E.fromSensSpec('100', '0').lrNeg, NaN);
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

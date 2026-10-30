@@ -84,9 +84,17 @@
     const npv  = tn / (tn + fn);
     const acc  = (tp + tn) / total;
     const prev = (tp + fn) / total;
+    // LR 是否有定義：須有有病者與無病者（整欄為 0 → sens 或 spec 無定義），
+    // 且原式非 0/0（無人陽性 → LR+ 不定；無人陰性 → LR− 不定）。
+    // 這些情形不以 +0.5 校正「補」出數值。
+    if (tp + fn === 0) errors.push('TP + FN = 0（無有病者）：敏感度與 LR 無法計算');
+    if (fp + tn === 0) errors.push('FP + TN = 0（無無病者）：特異度與 LR 無法計算');
+    const cols = tp + fn > 0 && fp + tn > 0;
+    const posOk = cols && tp + fp > 0;
+    const negOk = cols && fn + tn > 0;
     const c = correctCounts({ tp, fp, fn, tn }); // 校正後避免除以 0
-    const lrPos = (c.tp / (c.tp + c.fn)) / (c.fp / (c.fp + c.tn));
-    const lrNeg = (c.fn / (c.tp + c.fn)) / (c.tn / (c.fp + c.tn));
+    const lrPos = posOk ? (c.tp / (c.tp + c.fn)) / (c.fp / (c.fp + c.tn)) : NaN;
+    const lrNeg = negOk ? (c.fn / (c.tp + c.fn)) / (c.tn / (c.fp + c.tn)) : NaN;
     const sePos = Math.sqrt(1 / c.tp - 1 / (c.tp + c.fn) + 1 / c.fp - 1 / (c.fp + c.tn));
     const seNeg = Math.sqrt(1 / c.fn - 1 / (c.fn + c.tp) + 1 / c.tn - 1 / (c.tn + c.fp));
     return {
