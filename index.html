@@ -498,6 +498,8 @@
       const ss = document.querySelector('input[name=mode]:checked').value === 'ss';
       $('modeSS').style.display = ss ? '' : 'none';
       $('modeCounts').style.display = ss ? 'none' : '';
+      // 載入的檢驗只對應 sens/spec；改用 2×2 人數時解除綁定，避免總結沿用檢驗名稱與出處
+      if (!ss) { currentTest = null; $('testLoader').value = ''; $('testInfo').style.display = 'none'; }
       recalc();
     }));
   $('sensIn').addEventListener('input', recalc);
