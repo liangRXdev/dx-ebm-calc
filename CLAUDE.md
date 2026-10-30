@@ -1,6 +1,6 @@
 # dx-ebm-calc — 專案規則
 
-診斷檢驗 EBM 計算器（2×2 → LR → Fagan nomogram）。單檔 vanilla JS + SVG，無框架、無相依套件，部署於 GitHub Pages。`tx-ebm-calc` 是治療端姊妹作。
+診斷檢驗 EBM 計算器（2×2 → LR → Fagan nomogram）。vanilla JS + SVG（`index.html` UI＋`engine.js` 計算），無框架、無相依套件，部署於 GitHub Pages。`tx-ebm-calc` 是治療端姊妹作。
 
 **定位：教學與實證讀書會用，非臨床決策依據。** 任何新增功能的文案都要守住這個界線。
 
