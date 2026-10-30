@@ -63,7 +63,8 @@
   const NAN2 = () => [NaN, NaN];
   const emptyCounts = (errors) => ({
     mode: 'counts', total: NaN, prev: NaN, sens: NaN, spec: NaN, ppv: NaN, npv: NaN, acc: NaN,
-    lrPos: NaN, lrNeg: NaN, sensCI: NAN2(), specCI: NAN2(), lrPosCI: NAN2(), lrNegCI: NAN2(), errors,
+    lrPos: NaN, lrNeg: NaN, sensCI: NAN2(), specCI: NAN2(), lrPosCI: NAN2(), lrNegCI: NAN2(),
+    corrected: false, errors,
   });
 
   // ── 2×2 人數 → 指標 ──
@@ -104,6 +105,8 @@
       specCI: wilson(tn, tn + fp),
       lrPosCI: [Math.exp(Math.log(lrPos) - z * sePos), Math.exp(Math.log(lrPos) + z * sePos)],
       lrNegCI: [Math.exp(Math.log(lrNeg) - z * seNeg), Math.exp(Math.log(lrNeg) + z * seNeg)],
+      // 畫面與總結須標示：LR± 與其 CI 為校正後的值
+      corrected: (posOk || negOk) && c.tp !== tp,
       errors,
     };
   }
@@ -120,7 +123,7 @@
       lrPos: sens / (1 - spec),
       lrNeg: (1 - sens) / spec,
       sensCI: null, specCI: null, lrPosCI: null, lrNegCI: null,
-      errors,
+      corrected: false, errors,
     };
   }
 
@@ -235,6 +238,7 @@
     L.push(`敏感度 ${pct(s.sens)}、特異度 ${pct(s.spec)}`);
     L.push(`LR+ = ${num(s.lrPos)}（${ip.txt}）`);
     L.push(`LR− = ${num(s.lrNeg, 3)}（${ineg.txt}）`);
+    if (s.corrected) L.push('　※ 2×2 有零格：LR± 與其 CI 為零格 +0.5 校正（四格皆加）後的值');
     L.push('');
     L.push(`貝氏更新（檢驗結果：${b.useNeg ? '陰性' : '陽性'}）`);
     L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}` +

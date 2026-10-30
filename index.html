@@ -354,6 +354,9 @@
     const ciStr = (arr, fmt) => !arr ? '直接輸入（無 CI）'
       : isFinite(arr[0]) && isFinite(arr[1]) ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '—';
 
+    // 零格時 LR 點估計與 CI 皆為 +0.5 校正後的值，須在卡上標示
+    const adj = (lr) => r.corrected && isFinite(lr) ? '（零格 +0.5 校正）' : '';
+
     setMetrics($('results'), [
       metric('盛行率 Prevalence', pct(r.prev), mode === 'counts' && isFinite(r.total) ? 'n = ' + r.total : '—'),
       metric('敏感度 Sensitivity', pct(r.sens), ciStr(r.sensCI, pct)),
@@ -361,8 +364,8 @@
       metric('陽性預測值 PPV', pct(r.ppv), mode === 'counts' ? '依盛行率而變' : '—'),
       metric('陰性預測值 NPV', pct(r.npv), mode === 'counts' ? '依盛行率而變' : '—'),
       metric('準確度 Accuracy', pct(r.acc), ''),
-      metric('LR+', num(r.lrPos), ciStr(r.lrPosCI, (v) => num(v)), true, E.interpretPos(r.lrPos)),
-      metric('LR−', num(r.lrNeg, 3), ciStr(r.lrNegCI, (v) => num(v, 3)), true, E.interpretNeg(r.lrNeg)),
+      metric('LR+', num(r.lrPos), ciStr(r.lrPosCI, (v) => num(v)) + adj(r.lrPos), true, E.interpretPos(r.lrPos)),
+      metric('LR−', num(r.lrNeg, 3), ciStr(r.lrNegCI, (v) => num(v, 3)) + adj(r.lrNeg), true, E.interpretNeg(r.lrNeg)),
     ].join(''));
     $('inputWarn').textContent = r.errors.join('；');
 

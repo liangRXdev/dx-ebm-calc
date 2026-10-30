@@ -365,5 +365,20 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C6 一般 LR− 仍寫降至', sum(ok, '30', true).includes('降至'), true);
 })();
 
+// ── C7. 零格 +0.5 校正須標示（畫面與複製文字）──
+// 重現（修正前）：TP 10 / FP 0 / FN 5 / TN 20 → 畫面 spec 100.0%、LR+ 27.56，
+// 無任何標示說明 LR 是校正後的值（只在頁尾免責文字提到）
+(() => {
+  const r = E.fromCounts({ tp: 10, fp: 0, fn: 5, tn: 20 });
+  eq('C7 零格 corrected', r.corrected, true);
+  eq('C7 無零格 corrected', E.fromCounts({ tp: 80, fp: 30, fn: 20, tn: 70 }).corrected, false);
+  eq('C7 sens/spec 模式 corrected', E.fromSensSpec('80', '70').corrected, false);
+  const txt = E.summaryText(r, Object.assign({ useNeg: false }, E.bayes('30', r.lrPos)), null);
+  eq('C7 總結標示校正', txt.includes('零格 +0.5 校正'), true);
+  const plain = E.fromCounts({ tp: 80, fp: 30, fn: 20, tn: 70 });
+  const t2 = E.summaryText(plain, Object.assign({ useNeg: false }, E.bayes('30', plain.lrPos)), null);
+  eq('C7 無零格不標示', t2.includes('校正'), false);
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
