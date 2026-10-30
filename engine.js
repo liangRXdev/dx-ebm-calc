@@ -209,6 +209,22 @@
     };
   }
 
+  // 目前的 sens/spec 是否仍為載入檢驗帶入的值；使用者改值後總結不得再掛原檢驗名稱與出處
+  function testBindingIntact(t, sensPct, specPct) {
+    if (!t) return false;
+    const p = presetFromTest(t);
+    const same = (a, b) => String(a).trim() !== '' && Math.abs(Number(a) - Number(b)) < 1e-9;
+    return same(sensPct, p.sensPct) && same(specPct, p.specPct);
+  }
+
+  // 原文 pooled LR 與本頁由 sens/spec 推算的 LR，到小數 2 位仍不同時回傳說明；否則空字串
+  function pooledLrNote(t, s) {
+    if (!t || !s) return '';
+    const differs = (stored, calc) => isFinite(stored) && isFinite(calc) && stored.toFixed(2) !== calc.toFixed(2);
+    if (!differs(t.lrPos, s.lrPos) && !differs(t.lrNeg, s.lrNeg)) return '';
+    return `原文 pooled LR+ ${t.lrPos}、LR− ${t.lrNeg}；本頁 LR 由 sens/spec 推算，兩者可能不同`;
+  }
+
   // ── 白話結果總結 ──
   // s：fromCounts/fromSensSpec 的結果；b：bayes 結果加 useNeg；test：載入的檢驗或 null
   function summaryText(s, b, test) {
@@ -239,6 +255,8 @@
     L.push(`LR+ = ${num(s.lrPos)}（${ip.txt}）`);
     L.push(`LR− = ${num(s.lrNeg, 3)}（${ineg.txt}）`);
     if (s.corrected) L.push('　※ 2×2 有零格：LR± 與其 CI 為零格 +0.5 校正（四格皆加）後的值');
+    const pooled = pooledLrNote(test, s);
+    if (pooled) L.push('　※ ' + pooled);
     L.push('');
     L.push(`貝氏更新（檢驗結果：${b.useNeg ? '陰性' : '陽性'}）`);
     L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}` +
@@ -276,6 +294,6 @@
     z, parseCount, parsePct, pct, num, wilson, correctCounts, fromCounts, fromSensSpec,
     interpretPos, interpretNeg, postProb, bayes, deltaParts,
     NOMO, logit, leftY, rightY, lrY, probFromLeftY, probFromRightY, lrFromY, nomoPoints,
-    isPrognostic, presetFromTest, summaryText, copyText,
+    isPrognostic, presetFromTest, testBindingIntact, pooledLrNote, summaryText, copyText,
   };
 });

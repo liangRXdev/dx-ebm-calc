@@ -38,7 +38,8 @@ Fagan nomogram 圖面**刻意設計為唯讀**（手機誤觸的教訓），pre-
 `meta.schema` 已定義完整欄位語意，新增檢驗時照著填。硬性要求：
 
 - **每筆必附 `source` 與 `sourceUrl`**，不可只寫數值
-- `sens` / `spec` 為主要欄位；`lrPos` / `lrNeg` 多由 sens/spec 推算，**若與原文 pooled LR 不同必須註明**
+- `sens` / `spec` 為主要欄位；`lrPos` / `lrNeg` 多由 sens/spec 推算，**若與原文 pooled LR 不同必須註明**。畫面上到小數 2 位仍不同者，`pooledLrNote` 會自動在 LR 卡與總結並列原文值
+- 載入檢驗後使用者改了 sens/spec 即解除綁定（`testBindingIntact`），總結不再掛該檢驗名稱與出處
 - `threshold`（陽性定義）與 `population`（適用族群）不可省——LR 隨族群與 cutoff 而變，缺這兩欄的數值會誤導
 - 改動後同步更新 `meta.lastUpdated`
 - `engine.test.js` D 段逐筆檢查上述欄位；LR 與推算值不符且未註明者列在 `KNOWN_PENDING`（待決，不自行改值）

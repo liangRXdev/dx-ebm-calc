@@ -85,6 +85,7 @@
     .metric .interp.warn { color: var(--danger); }
     .input-warn { color: var(--danger); font-size: 0.78rem; margin: 0.5rem 0 0; }
     .input-warn:empty { display: none; }
+    .pooled-note { grid-column: 1 / -1; color: var(--text-muted); font-size: 0.78rem; }
 
     /* ── 載入檢驗 / 模式切換 ── */
     .loader-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
@@ -367,7 +368,10 @@
       metric('準確度 Accuracy', pct(r.acc), ''),
       metric('LR+', num(r.lrPos), ciStr(r.lrPosCI, (v) => num(v)) + adj(r.lrPos), true, E.interpretPos(r.lrPos)),
       metric('LR−', num(r.lrNeg, 3), ciStr(r.lrNegCI, (v) => num(v, 3)) + adj(r.lrNeg), true, E.interpretNeg(r.lrNeg)),
-    ].join(''));
+    ].join('') + (() => {
+      const pooled = E.pooledLrNote(currentTest, r);
+      return pooled ? `<div class="pooled-note">※ ${pooled}</div>` : '';
+    })());
     $('inputWarn').textContent = r.errors.join('；');
 
     return r;
@@ -502,8 +506,15 @@
       if (!ss) { currentTest = null; $('testLoader').value = ''; $('testInfo').style.display = 'none'; }
       recalc();
     }));
-  $('sensIn').addEventListener('input', recalc);
-  $('specIn').addEventListener('input', recalc);
+  // 載入檢驗後改了 sens/spec：數值已不是該檢驗，解除綁定
+  const onSSInput = () => {
+    if (currentTest && !E.testBindingIntact(currentTest, $('sensIn').value, $('specIn').value)) {
+      currentTest = null; $('testLoader').value = ''; $('testInfo').style.display = 'none';
+    }
+    recalc();
+  };
+  $('sensIn').addEventListener('input', onSSInput);
+  $('specIn').addEventListener('input', onSSInput);
 
   // ── 載入檢驗庫（tests.json）──
   const isProg = E.isPrognostic;

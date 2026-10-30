@@ -151,6 +151,33 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
     eq(`U4 ${n} 次操作 nomogram 不出界`, outOfBox, 0);
   }
 
+  // ── U5. 載入檢驗後修改 sens/spec：解除綁定，總結不再掛原檢驗名稱與出處 ──
+  // 重現（修正前）：載入 Ottawa → sens 改 80 → 總結仍寫「檢驗：渥太華腳踝規則」並附 Ottawa 出處
+  {
+    const A = makeApp(); await tick();
+    const T = A.testsJson.tests;
+    A.set('testLoader', T.findIndex((t) => t.id === 'ottawa-ankle'));
+    A.set('sensIn', A.els.sensIn.value); // 原值重新輸入不解除
+    eq('U5 原值不解除', A.els.summary.textContent.includes('渥太華'), true);
+    A.set('sensIn', '80');
+    eq('U5 改 sens → 總結不掛檢驗名', A.els.summary.textContent.includes('渥太華'), false);
+    eq('U5 改 sens → 不附出處', A.els.summary.textContent.includes('來源：'), false);
+    eq('U5 改 sens → 資訊卡隱藏', A.els.testInfo.style.display, 'none');
+    eq('U5 改 sens → 選單回到手動', A.els.testLoader.value, '');
+    A.set('testLoader', T.findIndex((t) => t.id === 'ottawa-ankle'));
+    A.set('specIn', '10');
+    eq('U5 改 spec → 解除', A.els.summary.textContent.includes('渥太華'), false);
+  }
+
+  // ── U6. 載入 Alvarado：LR 卡標示原文 pooled 值 ──
+  {
+    const A = makeApp(); await tick();
+    A.set('testLoader', A.testsJson.tests.findIndex((t) => t.id === 'alvarado-appendicitis'));
+    eq('U6 LR 卡含 pooled 說明', A.els.results.innerHTML.includes('原文 pooled LR+ 2.43'), true);
+    A.set('testLoader', A.testsJson.tests.findIndex((t) => t.id === 'ottawa-ankle'));
+    eq('U6 Ottawa 無 pooled 說明', A.els.results.innerHTML.includes('原文 pooled'), false);
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();
