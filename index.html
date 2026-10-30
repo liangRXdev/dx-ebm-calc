@@ -382,8 +382,9 @@
       `<div class="box final"><small>post-test 機率</small><b>${pct(pPost)}</b></div>`;
 
     const d = E.deltaParts(pPre, pPost);
-    $('delta').innerHTML = `檢驗後機率變化：<span class="${d.dir}">${d.arrow} ${d.abs} 個百分點</span>` +
-      `（${pct(pPre)} → ${pct(pPost)}）`;
+    $('delta').innerHTML = d.dir
+      ? `檢驗後機率變化：<span class="${d.dir}">${d.arrow} ${d.abs} 個百分點</span>（${pct(pPre)} → ${pct(pPost)}）`
+      : '檢驗後機率變化：—';
 
     // 同步滑桿 + 畫 nomogram
     $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));

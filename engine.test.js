@@ -210,5 +210,32 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   [0.001, 1000].forEach((v) => eq(`B6 LR 刻度 ${v} 在軸內`, E.lrY(v) >= N.top && E.lrY(v) <= N.bot, true));
 })();
 
+// ══ C. 極端值（每段對應一個修正；拿掉修正會紅）══
+
+// ── C1. LR = ∞／0 與 pre-test 0%／100% ──
+// sens = spec = 100% → LR+ = 1/0 = ∞、LR− = 0；post = p·LR/(p·LR + 1 − p) 的極限
+(() => {
+  const r = E.fromSensSpec('100', '100');
+  eq('C1 LR+ = ∞', r.lrPos, Infinity);
+  eq('C1 LR− = 0', r.lrNeg, 0);
+  eq('C1 num(∞) 標示 ∞', E.num(Infinity), '∞');
+  eq('C1 LR+ ∞ 分級＝強', E.interpretPos(Infinity).txt.slice(0, 1), '強');
+  eq('C1 LR− ∞ 分級＝異常', E.interpretNeg(Infinity).cls, 'warn');
+  eq('C1 pre 30% × ∞ → 100%', E.bayes('30', Infinity).pPost, 1);
+  eq('C1 pre 0% × ∞ → 不定', E.bayes('0', Infinity).pPost, NaN);
+  eq('C1 pre 100% × 2 → 100%', E.bayes('100', 2).pPost, 1);
+  eq('C1 pre 100% odds = ∞', E.bayes('100', 2).preOdds, Infinity);
+  eq('C1 pre 0% × 2 → 0%', E.bayes('0', 2).pPost, 0);
+  eq('C1 pre 30% × 0 → 0%', E.bayes('30', 0).pPost, 0);
+  eq('C1 pre 100% × 0 → 不定', E.bayes('100', 0).pPost, NaN);
+  const d = E.deltaParts(NaN, 0.3);
+  eq('C1 delta 不定 → —', d.abs, '—');
+  const b = Object.assign({ useNeg: false }, E.bayes('30', r.lrPos));
+  const txt = E.summaryText(r, b, null);
+  eq('C1 總結無 NaN', /NaN|Infinity/.test(txt), false);
+  eq('C1 總結標示 LR+ ∞', txt.includes('LR+ = ∞'), true);
+  eq('C1 總結 post 100%', txt.includes('檢驗後機率 100.0%'), true);
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

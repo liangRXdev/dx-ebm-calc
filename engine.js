@@ -26,7 +26,8 @@
 
   // ── 顯示格式 ──
   const pct = (v) => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
-  const num = (v, d = 2) => isFinite(v) ? v.toFixed(d) : '—';
+  // LR 或 odds 為 +∞（如 spec = 100%）時明確標示 ∞，不與「無法計算」的 — 混淆
+  const num = (v, d = 2) => v === Infinity ? '∞' : isFinite(v) ? v.toFixed(d) : '—';
 
   // 比例的 Wilson score 95% CI
   function wilson(x, n) {
@@ -84,8 +85,9 @@
   }
 
   // ── LR 白話強度說明（Jaeschke/Guyatt/Sackett JAMA 1994；McGee 2002）──
+  // NaN（無法計算）→ —；+∞ 照門檻落在「強」(LR+) 或「異常」(LR−)
   function interpretPos(lr) {
-    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
+    if (Number.isNaN(lr)) return { txt: '—', cls: 'muted' };
     if (lr < 1)   return { txt: '⚠ 異常：LR+ <1 表示陽性反而降低疾病可能，請檢查 2×2 方向', cls: 'warn' };
     if (lr < 2)   return { txt: '很弱：陽性結果幾乎不改變判斷', cls: 'muted' };
     if (lr < 5)   return { txt: '弱：小幅提高疾病可能，常需搭配其他證據', cls: 'muted' };
@@ -93,7 +95,7 @@
     return { txt: '強：大幅提高疾病可能，足以 rule-in', cls: 'good' };
   }
   function interpretNeg(lr) {
-    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
+    if (Number.isNaN(lr)) return { txt: '—', cls: 'muted' };
     if (lr > 1)    return { txt: '⚠ 異常：LR− >1 表示陰性反而提高疾病可能，請檢查 2×2 方向', cls: 'warn' };
     if (lr > 0.5)  return { txt: '很弱：陰性結果幾乎不改變判斷', cls: 'muted' };
     if (lr > 0.2)  return { txt: '弱：小幅降低疾病可能，常需搭配其他證據', cls: 'muted' };
@@ -102,12 +104,20 @@
   }
 
   // ── Bayes 更新：pre-test（百分比）× LR → post-test ──
+  // 以 post = p·LR / (p·LR + 1 − p) 計算（與 odds 版等價），避免 p = 100% 或 LR = ∞
+  // 時出現 ∞/∞。0·∞ 型（p = 0 且 LR = ∞；p = 100% 且 LR = 0）數學上不定 → NaN。
+  const odds = (p) => p / (1 - p);
+  function postProb(pPre, lr) {
+    if (!(pPre >= 0 && pPre <= 1) || !(lr >= 0)) return NaN;
+    if (lr === Infinity) return pPre > 0 ? 1 : NaN;
+    if (lr === 0) return pPre < 1 ? 0 : NaN;
+    const a = pPre * lr;
+    return a / (a + 1 - pPre);
+  }
   function bayes(pretestPct, lr) {
     const pPre = parseNum(pretestPct) / 100;
-    const preOdds = pPre / (1 - pPre);
-    const postOdds = preOdds * lr;
-    const pPost = postOdds / (1 + postOdds);
-    return { pPre, preOdds, postOdds, pPost };
+    const pPost = postProb(pPre, lr);
+    return { pPre, preOdds: odds(pPre), postOdds: odds(pPost), pPost };
   }
 
   // ── Fagan nomogram 幾何 ──
@@ -154,8 +164,8 @@
   function summaryText(s, b, test) {
     const ip = interpretPos(s.lrPos), ineg = interpretNeg(s.lrNeg);
     const target = (test && test.target) || '目標疾病';
-    const diff = (b.pPost - b.pPre) * 100;
-    const dirWord = diff >= 0 ? '提高' : '降低';
+    const d = deltaParts(b.pPre, b.pPost);
+    const dirWord = d.dir === 'up' ? '提高' : '降低';
 
     let verdict;
     if (!isFinite(b.pPost)) {
@@ -176,7 +186,8 @@
     L.push(`LR− = ${num(s.lrNeg, 3)}（${ineg.txt}）`);
     L.push('');
     L.push(`貝氏更新（檢驗結果：${b.useNeg ? '陰性' : '陽性'}）`);
-    L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}（${dirWord} ${Math.abs(diff).toFixed(1)} 個百分點）`);
+    L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}` +
+      (d.dir ? `（${dirWord} ${d.abs} 個百分點）` : ''));
     L.push('');
     L.push('判讀：' + verdict);
     if (test) L.push('來源：' + test.source);
@@ -186,14 +197,16 @@
   }
 
   // Bayes 鏈下方的變化說明（純文字部分）
+  // 無法計算時 dir 為空字串、abs 為 —
   function deltaParts(pPre, pPost) {
     const diff = (pPost - pPre) * 100;
+    if (!isFinite(diff)) return { dir: '', arrow: '', abs: '—' };
     return { dir: diff >= 0 ? 'up' : 'down', arrow: diff >= 0 ? '▲' : '▼', abs: Math.abs(diff).toFixed(1) };
   }
 
   return {
     z, parseNum, pct, num, wilson, correctCounts, fromCounts, fromSensSpec,
-    interpretPos, interpretNeg, bayes, deltaParts,
+    interpretPos, interpretNeg, postProb, bayes, deltaParts,
     NOMO, logit, leftY, rightY, lrY, probFromLeftY, probFromRightY, lrFromY, nomoPoints,
     isPrognostic, presetFromTest, summaryText,
   };
