@@ -343,5 +343,27 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C5 LR NaN 不畫', E.nomoPoints(0.3, NaN, NaN), null);
 })();
 
+// ── C6. 白話總結的方向用詞須與數值一致 ──
+// 重現（修正前）：TP 20 / FP 70 / FN 80 / TN 30（2×2 方向填反）、陽性、pre 30%
+// → 畫面 post 10.9%（▼），總結卻寫「由 30.0% 提高至 10.9%，支持力有限」
+(() => {
+  const sum = (r, pre, useNeg) => {
+    const b = Object.assign({ useNeg }, E.bayes(pre, useNeg ? r.lrNeg : r.lrPos));
+    return E.summaryText(r, b, null).split('\n').find((l) => l.startsWith('判讀：'));
+  };
+  const rev = E.fromCounts({ tp: 20, fp: 70, fn: 80, tn: 30 });
+  const vPos = sum(rev, '30', false);
+  eq('C6 LR+<1 寫「降至」', vPos.includes('由 30.0% 降至 10.9%'), true);
+  eq('C6 LR+<1 標示異常', vPos.includes('方向異常'), true);
+  const vNeg = sum(rev, '30', true);
+  eq('C6 LR−>1 寫「提高至」', /由 30\.0% 提高至/.test(vNeg), true);
+  eq('C6 LR−>1 標示異常', vNeg.includes('方向異常'), true);
+  const flat = E.fromSensSpec('50', '50');
+  eq('C6 LR = 1 寫「維持」', sum(flat, '30', false).includes('維持於 30.0%'), true);
+  // 一般情形維持原文案（characterization A2 同步鎖住）
+  const ok = E.fromSensSpec('90', '95');
+  eq('C6 一般 LR− 仍寫降至', sum(ok, '30', true).includes('降至'), true);
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

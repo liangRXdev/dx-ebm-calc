@@ -214,15 +214,19 @@
     const d = deltaParts(b.pPre, b.pPost);
     const dirWord = d.dir === 'up' ? '提高' : '降低';
 
+    // 方向動詞依實際數值決定（LR+ <1 或 LR− >1 時方向與結果相反，需標示異常）
+    const move = pct(b.pPre) === pct(b.pPost) ? `維持於 ${pct(b.pPost)}`
+      : `${b.pPost > b.pPre ? '提高至' : '降至'} ${pct(b.pPost)}`;
+    const anomaly = '方向異常（LR 落在與結果相反的一側），請檢查 2×2 方向';
     let verdict;
     if (!isFinite(b.pPost)) {
       verdict = '（請先輸入資料）';
     } else if (b.useNeg) {
-      const strength = s.lrNeg <= 0.1 ? '屬強力排除證據' : s.lrNeg <= 0.2 ? '屬中等排除證據' : '排除力有限，須綜合其他資訊';
-      verdict = `陰性結果（LR− ${num(s.lrNeg, 3)}）將「${target}」的可能性由 ${pct(b.pPre)} 降至 ${pct(b.pPost)}，${strength}。`;
+      const strength = s.lrNeg > 1 ? anomaly : s.lrNeg <= 0.1 ? '屬強力排除證據' : s.lrNeg <= 0.2 ? '屬中等排除證據' : '排除力有限，須綜合其他資訊';
+      verdict = `陰性結果（LR− ${num(s.lrNeg, 3)}）將「${target}」的可能性由 ${pct(b.pPre)} ${move}，${strength}。`;
     } else {
-      const strength = s.lrPos >= 10 ? '屬強力支持診斷' : s.lrPos >= 5 ? '屬中等支持' : '支持力有限，須綜合其他資訊';
-      verdict = `陽性結果（LR+ ${num(s.lrPos)}）將「${target}」的可能性由 ${pct(b.pPre)} 提高至 ${pct(b.pPost)}，${strength}。`;
+      const strength = s.lrPos < 1 ? anomaly : s.lrPos >= 10 ? '屬強力支持診斷' : s.lrPos >= 5 ? '屬中等支持' : '支持力有限，須綜合其他資訊';
+      verdict = `陽性結果（LR+ ${num(s.lrPos)}）將「${target}」的可能性由 ${pct(b.pPre)} ${move}，${strength}。`;
     }
 
     const L = [];
