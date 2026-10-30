@@ -179,10 +179,16 @@
   const probFromRightY = (y) => expit((NOMO.C - y) / NOMO.s);
   const lrFromY        = (y) => Math.exp((NOMO.C - y) / (NOMO.s / 2));
 
-  // 連線三點的 y 座標；任一值非有限則不畫線（回傳 null）
+  // 連線三點的 y 座標。值無法計算 → null（不畫線）。
+  // 超出刻度（機率 <0.1% 或 >99.9%、LR <0.001 或 >1000，含 0 與 ∞）→ 貼齊軸端並標 clipped，
+  // 此時三點不再共線，畫面須以數字為準。
+  const NOMO_LR_MIN = 0.001, NOMO_LR_MAX = 1000;
+  const clampY = (y) => Math.min(NOMO.bot, Math.max(NOMO.top, y));
   function nomoPoints(pPre, lr, pPost) {
-    if (!(isFinite(pPre) && isFinite(pPost) && isFinite(lr))) return null;
-    return { ay: leftY(pPre), my: lrY(lr), by: rightY(pPost) };
+    if (!(pPre >= 0 && pPre <= 1) || !(pPost >= 0 && pPost <= 1) || !(lr >= 0)) return null;
+    const lrc = Math.min(NOMO_LR_MAX, Math.max(NOMO_LR_MIN, lr));
+    const clipped = lrc !== lr || nomoClamp(pPre) !== pPre || nomoClamp(pPost) !== pPost;
+    return { ay: clampY(leftY(pPre)), my: clampY(lrY(lrc)), by: clampY(rightY(pPost)), clipped };
   }
 
   // ── 檢驗庫 ──

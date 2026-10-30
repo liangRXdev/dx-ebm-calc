@@ -319,5 +319,29 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C4 sens CI 下界顯示', E.pct(r.sensCI[0]), '0.0%');
 })();
 
+// ── C5. Nomogram 不得出界：LR = 0／∞、極端機率 ──
+// 重現（修正前）：直接輸入 sens 0 / spec 70、陽性 → LR+ = 0，LR 點 y = Infinity（SVG 座標失效）；
+// sens = spec = 100% → LR+ = ∞，整條線不畫；p = 0.05% → 端點 y = 400.6 超出軸底 400
+(() => {
+  const N = E.NOMO;
+  const inside = (pts) => [pts.ay, pts.my, pts.by].every((y) => isFinite(y) && y >= N.top && y <= N.bot);
+  const zero = E.nomoPoints(0.3, 0, 0);
+  eq('C5 LR 0 在圖內', inside(zero), true);
+  eq('C5 LR 0 標示超出刻度', zero.clipped, true);
+  const inf = E.nomoPoints(0.3, Infinity, 1);
+  eq('C5 LR ∞ 仍畫線', inf !== null, true);
+  eq('C5 LR ∞ 在圖內', inside(inf), true);
+  eq('C5 LR ∞ 標示超出刻度', inf.clipped, true);
+  const tiny = E.nomoPoints(0.0005, 1, 0.0005);
+  eq('C5 p 0.05% 在圖內', inside(tiny), true);
+  eq('C5 p 0.05% 標示超出刻度', tiny.clipped, true);
+  const big = E.nomoPoints(0.5, 1e6, E.postProb(0.5, 1e6));
+  eq('C5 LR 1e6 在圖內', inside(big), true);
+  const ok = E.nomoPoints(0.3, 2.67, E.postProb(0.3, 2.67));
+  eq('C5 一般值不標示', ok.clipped, false);
+  eq('C5 NaN 不畫', E.nomoPoints(NaN, 2, NaN), null);
+  eq('C5 LR NaN 不畫', E.nomoPoints(0.3, NaN, NaN), null);
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
