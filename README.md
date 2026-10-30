@@ -13,13 +13,14 @@ An interactive evidence-based calculator for diagnostic tests: computes likeliho
 - **Test metrics**: from 2×2 counts or directly entered sens/spec → sensitivity, specificity, PPV, NPV, accuracy, LR+, LR− (95% CIs in 2×2 mode)
 - **Plain-language LR grading**: automatically labels "strong / moderate / weak rule-in / rule-out" by LR magnitude (Jaeschke/McGee criteria)
 - **Bayesian update**: pre-test → post-test probability, showing the odds chain step by step
-- **Interactive Fagan nomogram**: drag the left axis for live updates; pre- and post-test probabilities are marked on the chart
+- **Fagan nomogram**: a slider sets the pre-test probability and the line updates live; the chart itself is read-only (avoids accidental taps on mobile); pre- and post-test probabilities are marked on the chart
 - **Quick-reference LR library for common tests** (`tests.json`): 16 entries with original citations, loadable by "diagnostic / prognostic"
 - **Plain-language summary**: one-click copy (for notes / teaching), clear all
 
 ## Tech
 
-- Single-file `index.html` (vanilla JS + SVG, no framework, no dependencies)
+- `index.html` (UI + SVG drawing) and `engine.js` (all calculations; UMD, `window.DxEbm`) — vanilla JS, no framework, no dependencies
+- Tests: `node engine.test.js` and `node ui.test.js` (plain Node, no dependencies)
 - Data: `tests.json` (test library; single source of truth, extensible)
 - Style: MUJI-like palette consistent with the personal clinical tool collection (pharmacy-portal)
 
@@ -34,7 +35,7 @@ An interactive evidence-based calculator for diagnostic tests: computes likeliho
 
 - LR+ = sens/(1−spec); LR− = (1−sens)/spec
 - post-test odds = pre-test odds × LR; odds = p/(1−p)
-- 95% CI: log method for LR (Simel 1991), Wilson score for proportions; zero cells get a 0.5 continuity correction
+- 95% CI: log method for LR (Simel 1991), Wilson score for proportions; if any cell is zero, 0.5 is added to all four cells for the LR and its CI (labelled on screen); LR is shown as "—" when a whole row or column is zero
 
 ## Disclaimer
 

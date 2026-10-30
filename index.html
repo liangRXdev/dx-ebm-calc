@@ -83,6 +83,8 @@
     .metric .interp.good { color: var(--accent); }
     .metric .interp.muted { color: var(--text-muted); }
     .metric .interp.warn { color: var(--danger); }
+    .input-warn { color: var(--danger); font-size: 0.78rem; margin: 0.5rem 0 0; }
+    .input-warn:empty { display: none; }
 
     /* ── 載入檢驗 / 模式切換 ── */
     .loader-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
@@ -110,6 +112,7 @@
       line-height: 1.7; background: #FBF8F2; border: 1px solid var(--border); border-radius: 6px;
       padding: 0.9rem 1rem; margin: 0 0 0.9rem; color: var(--text-primary); }
     .copy-ok { color: var(--accent-hover); font-size: 0.78rem; margin-left: 0.5rem; }
+    .copy-ok.fail { color: var(--danger); }
     input[type=range] { width: 100%; max-width: 320px; accent-color: var(--accent); }
 
     .field { margin: 0.75rem 0; }
@@ -234,6 +237,7 @@
     </div><!-- /modeCounts -->
 
     <div class="results" id="results"></div>
+    <p class="input-warn" id="inputWarn" role="alert"></p>
     <div class="note">
       <b>為什麼看 LR 不只看 PPV/NPV？</b> PPV/NPV 會隨盛行率變動；
       <b>LR 是檢驗本身的固有屬性</b>，配上個別病人的 pre-test probability 才得到個人化結果（見區塊 2）。
@@ -263,6 +267,7 @@
       </div>
     </div>
 
+    <p class="input-warn" id="pretestWarn" role="alert"></p>
     <div class="chain" id="chain"></div>
     <div class="delta" id="delta"></div>
 
@@ -293,7 +298,7 @@
     <div style="text-align:center;">
       <button class="btn solid" id="copyBtn">複製</button>
       <button class="btn" id="clearAllBtn">清除全部</button>
-      <span class="copy-ok" id="copyOk" style="display:none;">已複製 ✓</span>
+      <span class="copy-ok" id="copyOk" role="status" style="display:none;">已複製 ✓</span>
     </div>
   </section>
 
@@ -304,6 +309,7 @@
   </p>
 </div>
 
+<script src="engine.js"></script>
 <script>
 (function () {
   'use strict';
@@ -318,50 +324,8 @@
   // ── DOM ──
   const $ = (id) => document.getElementById(id);
   const cells = ['tp', 'fp', 'fn', 'tn'];
-
-  // ── 數學工具 ──
-  const z = 1.96; // 95% CI
-
-  // 比例的 Wilson score 95% CI
-  function wilson(x, n) {
-    if (n === 0) return [NaN, NaN];
-    const p = x / n;
-    const d = 1 + z * z / n;
-    const c = p + z * z / (2 * n);
-    const s = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
-    return [(c - s) / d, (c + s) / d];
-  }
-
-  // 取得四格（零格加 0.5 校正，供 LR 計算用）
-  function getCounts(corrected) {
-    let tp = +$('tp').value || 0, fp = +$('fp').value || 0,
-        fn = +$('fn').value || 0, tn = +$('tn').value || 0;
-    if (corrected && (tp === 0 || fp === 0 || fn === 0 || tn === 0)) {
-      tp += 0.5; fp += 0.5; fn += 0.5; tn += 0.5;
-    }
-    return { tp, fp, fn, tn };
-  }
-
-  const pct = (v) => isFinite(v) ? (v * 100).toFixed(1) + '%' : '—';
-  const num = (v, d = 2) => isFinite(v) ? v.toFixed(d) : '—';
-
-  // ── LR 白話強度說明（Jaeschke/Guyatt/Sackett JAMA 1994；McGee 2002）──
-  function interpretPos(lr) {
-    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
-    if (lr < 1)   return { txt: '⚠ 異常：LR+ <1 表示陽性反而降低疾病可能，請檢查 2×2 方向', cls: 'warn' };
-    if (lr < 2)   return { txt: '很弱：陽性結果幾乎不改變判斷', cls: 'muted' };
-    if (lr < 5)   return { txt: '弱：小幅提高疾病可能，常需搭配其他證據', cls: 'muted' };
-    if (lr < 10)  return { txt: '中等：明顯提高疾病可能', cls: 'good' };
-    return { txt: '強：大幅提高疾病可能，足以 rule-in', cls: 'good' };
-  }
-  function interpretNeg(lr) {
-    if (!isFinite(lr)) return { txt: '—', cls: 'muted' };
-    if (lr > 1)    return { txt: '⚠ 異常：LR− >1 表示陰性反而提高疾病可能，請檢查 2×2 方向', cls: 'warn' };
-    if (lr > 0.5)  return { txt: '很弱：陰性結果幾乎不改變判斷', cls: 'muted' };
-    if (lr > 0.2)  return { txt: '弱：小幅降低疾病可能，常需搭配其他證據', cls: 'muted' };
-    if (lr > 0.1)  return { txt: '中等：明顯降低疾病可能', cls: 'good' };
-    return { txt: '強：大幅降低疾病可能，足以 rule-out', cls: 'good' };
-  }
+  const E = window.DxEbm;   // 全部計算在 engine.js；這裡只做 UI 與繪圖
+  const { pct, num } = E;
 
   // 重算閃示：以指標名稱比對前後的值＋CI 字串，只標記真的變了的卡；初次渲染不閃
   function setMetrics(el, html) {
@@ -380,63 +344,41 @@
   // ── 區塊 1 渲染（支援 2×2 與 sens/spec 兩種輸入模式）──
   function renderResults() {
     const mode = document.querySelector('input[name=mode]:checked').value;
-    let sens, spec, prev = NaN, ppv = NaN, npv = NaN, acc = NaN, total = NaN;
-    let lrPos, lrNeg, sensCI = null, specCI = null, lrPosCI = null, lrNegCI = null;
-
-    if (mode === 'counts') {
-      const { tp, fp, fn, tn } = getCounts(false);
-      total = tp + fp + fn + tn;
-      sens = tp / (tp + fn);
-      spec = tn / (tn + fp);
-      ppv  = tp / (tp + fp);
-      npv  = tn / (tn + fn);
-      acc  = (tp + tn) / total;
-      prev = (tp + fn) / total;
-      const c = getCounts(true); // 校正後避免除以 0
-      lrPos = (c.tp / (c.tp + c.fn)) / (c.fp / (c.fp + c.tn));
-      lrNeg = (c.fn / (c.tp + c.fn)) / (c.tn / (c.fp + c.tn));
-      const sePos = Math.sqrt(1 / c.tp - 1 / (c.tp + c.fn) + 1 / c.fp - 1 / (c.fp + c.tn));
-      const seNeg = Math.sqrt(1 / c.fn - 1 / (c.fn + c.tp) + 1 / c.tn - 1 / (c.tn + c.fp));
-      lrPosCI = [Math.exp(Math.log(lrPos) - z * sePos), Math.exp(Math.log(lrPos) + z * sePos)];
-      lrNegCI = [Math.exp(Math.log(lrNeg) - z * seNeg), Math.exp(Math.log(lrNeg) + z * seNeg)];
-      sensCI = wilson(tp, tp + fn);
-      specCI = wilson(tn, tn + fp);
-    } else {
-      sens = (+$('sensIn').value || 0) / 100;
-      spec = (+$('specIn').value || 0) / 100;
-      lrPos = sens / (1 - spec);
-      lrNeg = (1 - sens) / spec;
-    }
+    const r = mode === 'counts'
+      ? E.fromCounts({ tp: $('tp').value, fp: $('fp').value, fn: $('fn').value, tn: $('tn').value })
+      : E.fromSensSpec($('sensIn').value, $('specIn').value);
 
     const metric = (name, val, ci, key, interp) =>
       `<div class="metric ${key ? 'key' : ''}"><div class="name">${name}</div>` +
       `<div class="val">${val}</div>${ci ? `<div class="ci">${ci}</div>` : ''}` +
       `${interp ? `<div class="interp ${interp.cls}">${interp.txt}</div>` : ''}</div>`;
-    const ciStr = (arr, fmt) => arr ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '直接輸入（無 CI）';
+    const ciStr = (arr, fmt) => !arr ? '直接輸入（無 CI）'
+      : isFinite(arr[0]) && isFinite(arr[1]) ? 'CI ' + fmt(arr[0]) + '–' + fmt(arr[1]) : '—';
+
+    // 零格時 LR 點估計與 CI 皆為 +0.5 校正後的值，須在卡上標示
+    const adj = (lr) => r.corrected && isFinite(lr) ? '（零格 +0.5 校正）' : '';
 
     setMetrics($('results'), [
-      metric('盛行率 Prevalence', pct(prev), mode === 'counts' ? 'n = ' + total : '—'),
-      metric('敏感度 Sensitivity', pct(sens), ciStr(sensCI, pct)),
-      metric('特異度 Specificity', pct(spec), ciStr(specCI, pct)),
-      metric('陽性預測值 PPV', pct(ppv), mode === 'counts' ? '依盛行率而變' : '—'),
-      metric('陰性預測值 NPV', pct(npv), mode === 'counts' ? '依盛行率而變' : '—'),
-      metric('準確度 Accuracy', pct(acc), ''),
-      metric('LR+', num(lrPos), ciStr(lrPosCI, (v) => num(v)), true, interpretPos(lrPos)),
-      metric('LR−', num(lrNeg, 3), ciStr(lrNegCI, (v) => num(v, 3)), true, interpretNeg(lrNeg)),
+      metric('盛行率 Prevalence', pct(r.prev), mode === 'counts' && isFinite(r.total) ? 'n = ' + r.total : '—'),
+      metric('敏感度 Sensitivity', pct(r.sens), ciStr(r.sensCI, pct)),
+      metric('特異度 Specificity', pct(r.spec), ciStr(r.specCI, pct)),
+      metric('陽性預測值 PPV', pct(r.ppv), mode === 'counts' ? '依盛行率而變' : '—'),
+      metric('陰性預測值 NPV', pct(r.npv), mode === 'counts' ? '依盛行率而變' : '—'),
+      metric('準確度 Accuracy', pct(r.acc), ''),
+      metric('LR+', num(r.lrPos), ciStr(r.lrPosCI, (v) => num(v)) + adj(r.lrPos), true, E.interpretPos(r.lrPos)),
+      metric('LR−', num(r.lrNeg, 3), ciStr(r.lrNegCI, (v) => num(v, 3)) + adj(r.lrNeg), true, E.interpretNeg(r.lrNeg)),
     ].join(''));
+    $('inputWarn').textContent = r.errors.join('；');
 
-    return { prev, lrPos, lrNeg, sens, spec, mode };
+    return r;
   }
 
   // ── 區塊 2 渲染（Bayes 更新）──
   function renderBayes(stats) {
-    const pPre = (+$('pretest').value || 0) / 100;
     const useNeg = $('resultSel').value === 'neg';
     const lr = useNeg ? stats.lrNeg : stats.lrPos;
-
-    const preOdds = pPre / (1 - pPre);
-    const postOdds = preOdds * lr;
-    const pPost = postOdds / (1 + postOdds);
+    const { pPre, preOdds, postOdds, pPost, error } = E.bayes($('pretest').value, lr);
+    $('pretestWarn').textContent = error;
 
     const box = (label, val) => `<div class="box"><small>${label}</small><b>${val}</b></div>`;
     $('chain').innerHTML =
@@ -450,34 +392,22 @@
       '<span class="op">→</span>' +
       `<div class="box final"><small>post-test 機率</small><b>${pct(pPost)}</b></div>`;
 
-    const diff = (pPost - pPre) * 100;
-    const dir = diff >= 0 ? 'up' : 'down';
-    const arrow = diff >= 0 ? '▲' : '▼';
-    $('delta').innerHTML = `檢驗後機率變化：<span class="${dir}">${arrow} ${Math.abs(diff).toFixed(1)} 個百分點</span>` +
-      `（${pct(pPre)} → ${pct(pPost)}）`;
+    const d = E.deltaParts(pPre, pPost);
+    $('delta').innerHTML = d.dir
+      ? `檢驗後機率變化：<span class="${d.dir}">${d.arrow} ${d.abs} 個百分點</span>（${pct(pPre)} → ${pct(pPost)}）`
+      : '檢驗後機率變化：—';
 
     // 同步滑桿 + 畫 nomogram
-    $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));
+    if (isFinite(pPre)) $('pretestRange').value = Math.min(99.9, Math.max(0.1, pPre * 100));
     $('pretestRangeVal').textContent = pct(pPre) + (useNeg ? '（套用 LR−）' : '（套用 LR+）');
     drawNomogram(pPre, lr, pPost);
 
     return { pPre, lr, pPost, useNeg };
   }
 
-  // ── Fagan nomogram（SVG）──
-  // 數學基礎：logit(post) = logit(pre) + ln(LR)。
-  // 左軸用「顛倒的 log-odds」、中軸 LR 放在水平中點且以 ½·ln(LR) 定位，
-  // 兩端點連線必通過正確的 LR 刻度（幾何中點 = 兩端平均）。
-  const NOMO = { W: 320, H: 430, top: 42, bot: 400, s: 26, xL: 60, xM: 160, xR: 260 };
-  NOMO.C = (NOMO.top + NOMO.bot) / 2;
-  const nomoLogit = (p) => Math.log(p / (1 - p));
-  const nomoClamp = (p) => Math.min(0.999, Math.max(0.001, p));
-  const leftY  = (p) => NOMO.C + NOMO.s * nomoLogit(nomoClamp(p));  // 顛倒
-  const rightY = (p) => NOMO.C - NOMO.s * nomoLogit(nomoClamp(p));
-  const lrY    = (v) => NOMO.C - (NOMO.s / 2) * Math.log(v);
-
+  // ── Fagan nomogram（SVG）── 幾何換算見 engine.js
   function drawNomogram(pPre, lr, pPost) {
-    const { W, H, top, bot, s, xL, xM, xR, C } = NOMO;
+    const { W, H, top, bot, xL, xM, xR } = E.NOMO;
     const probTicks = [0.1, 1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 99.9];
     const lrTicks = [0.001, 0.01, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 1000];
 
@@ -493,22 +423,23 @@
     g += `<text x="${xR}" y="${top - 13}" text-anchor="middle" font-size="9" fill="#6B7280">機率 %</text>`;
 
     probTicks.forEach((t) => {
-      const yl = leftY(t / 100), yr = rightY(t / 100);
+      const yl = E.leftY(t / 100), yr = E.rightY(t / 100);
       g += `<line x1="${xL - 3}" y1="${yl}" x2="${xL}" y2="${yl}" stroke="#999"/>`;
       g += `<text x="${xL - 7}" y="${yl + 3}" text-anchor="end" font-size="8" fill="#6B7280">${t}</text>`;
       g += `<line x1="${xR}" y1="${yr}" x2="${xR + 3}" y2="${yr}" stroke="#999"/>`;
       g += `<text x="${xR + 7}" y="${yr + 3}" text-anchor="start" font-size="8" fill="#6B7280">${t}</text>`;
     });
     lrTicks.forEach((v) => {
-      const y = lrY(v);
+      const y = E.lrY(v);
       g += `<line x1="${xM - 3}" y1="${y}" x2="${xM + 3}" y2="${y}" stroke="#999"/>`;
       g += `<text x="${xM + 7}" y="${y + 3}" text-anchor="start" font-size="8" fill="#6B7280">${v}</text>`;
     });
 
     // 連線 + 三個點 + 數值標籤（pre/LR/post 都標在圖上）
     const haloR = 'style="paint-order:stroke;stroke:#fff;stroke-width:3px"';
-    if (isFinite(pPre) && isFinite(pPost) && isFinite(lr)) {
-      const ay = leftY(pPre), my = lrY(lr), by = rightY(pPost);
+    const pts = E.nomoPoints(pPre, lr, pPost);
+    if (pts) {
+      const { ay, my, by } = pts;
       g += `<line x1="${xL}" y1="${ay}" x2="${xR}" y2="${by}" stroke="#3D7A8A" stroke-width="2"/>`;
       [[xL, ay], [xM, my], [xR, by]].forEach(([x, y]) =>
         g += `<circle cx="${x}" cy="${y}" r="5" fill="#3D7A8A" stroke="#fff" stroke-width="1.2"/>`);
@@ -516,6 +447,9 @@
       g += `<text x="${xL + 9}" y="${ay - 7}" text-anchor="start" font-size="10" font-weight="700" fill="#3D7A8A" ${haloR}>前 ${pct(pPre)}</text>`;
       g += `<text x="${xM + 9}" y="${my - 7}" text-anchor="start" font-size="9" font-weight="700" fill="#3D7A8A" ${haloR}>${num(lr, lr < 1 ? 3 : 2)}</text>`;
       g += `<text x="${xR - 9}" y="${by - 9}" text-anchor="end" font-size="12" font-weight="700" fill="#C0392B" ${haloR}>後 ${pct(pPost)}</text>`;
+      if (pts.clipped) {
+        g += `<text x="${W / 2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#8A4B08">⚠ 數值超出刻度，端點貼齊軸端，以標示數字為準</text>`;
+      }
     }
 
     $('nomo').innerHTML =
@@ -525,37 +459,7 @@
   // ── 白話結果總結 ──
   let currentTest = null;
   function renderSummary(s, b) {
-    const ip = interpretPos(s.lrPos), ineg = interpretNeg(s.lrNeg);
-    const target = (currentTest && currentTest.target) || '目標疾病';
-    const diff = (b.pPost - b.pPre) * 100;
-    const dirWord = diff >= 0 ? '提高' : '降低';
-
-    let verdict;
-    if (!isFinite(b.pPost)) {
-      verdict = '（請先輸入資料）';
-    } else if (b.useNeg) {
-      const strength = s.lrNeg <= 0.1 ? '屬強力排除證據' : s.lrNeg <= 0.2 ? '屬中等排除證據' : '排除力有限，須綜合其他資訊';
-      verdict = `陰性結果（LR− ${num(s.lrNeg, 3)}）將「${target}」的可能性由 ${pct(b.pPre)} 降至 ${pct(b.pPost)}，${strength}。`;
-    } else {
-      const strength = s.lrPos >= 10 ? '屬強力支持診斷' : s.lrPos >= 5 ? '屬中等支持' : '支持力有限，須綜合其他資訊';
-      verdict = `陽性結果（LR+ ${num(s.lrPos)}）將「${target}」的可能性由 ${pct(b.pPre)} 提高至 ${pct(b.pPost)}，${strength}。`;
-    }
-
-    const L = [];
-    L.push('【診斷檢驗 EBM 結果摘要】');
-    L.push('檢驗：' + (currentTest ? `${currentTest.nameZh}（${currentTest.target}）` : '自訂輸入'));
-    L.push(`敏感度 ${pct(s.sens)}、特異度 ${pct(s.spec)}`);
-    L.push(`LR+ = ${num(s.lrPos)}（${ip.txt}）`);
-    L.push(`LR− = ${num(s.lrNeg, 3)}（${ineg.txt}）`);
-    L.push('');
-    L.push(`貝氏更新（檢驗結果：${b.useNeg ? '陰性' : '陽性'}）`);
-    L.push(`　檢驗前機率 ${pct(b.pPre)} → 檢驗後機率 ${pct(b.pPost)}（${dirWord} ${Math.abs(diff).toFixed(1)} 個百分點）`);
-    L.push('');
-    L.push('判讀：' + verdict);
-    if (currentTest) L.push('來源：' + currentTest.source);
-    L.push('');
-    L.push('※ 教學／實證練習用，非臨床決策依據。');
-    $('summary').textContent = L.join('\n');
+    $('summary').textContent = E.summaryText(s, b, currentTest);
   }
 
   // ── 重算 ──
@@ -594,13 +498,15 @@
       const ss = document.querySelector('input[name=mode]:checked').value === 'ss';
       $('modeSS').style.display = ss ? '' : 'none';
       $('modeCounts').style.display = ss ? 'none' : '';
+      // 載入的檢驗只對應 sens/spec；改用 2×2 人數時解除綁定，避免總結沿用檢驗名稱與出處
+      if (!ss) { currentTest = null; $('testLoader').value = ''; $('testInfo').style.display = 'none'; }
       recalc();
     }));
   $('sensIn').addEventListener('input', recalc);
   $('specIn').addEventListener('input', recalc);
 
   // ── 載入檢驗庫（tests.json）──
-  const isProg = (t) => /預後|mortality/i.test(t.target || '');
+  const isProg = E.isPrognostic;
   let testsData = [];
   fetch('tests.json')
     .then((r) => r.json())
@@ -623,12 +529,13 @@
     if (!t) return;
     currentTest = t;
     // 切到 sens/spec 模式並帶入數值
+    const p = E.presetFromTest(t);
     document.querySelector('input[name=mode][value=ss]').checked = true;
     $('modeSS').style.display = ''; $('modeCounts').style.display = 'none';
-    $('sensIn').value = (t.sens * 100).toFixed(1);
-    $('specIn').value = (t.spec * 100).toFixed(1);
-    if (isFinite(t.pretestTypical)) $('pretest').value = (t.pretestTypical * 100).toFixed(1);
-    $('resultSel').value = (t.category === 'rule-out') ? 'neg' : 'pos';
+    $('sensIn').value = p.sensPct;
+    $('specIn').value = p.specPct;
+    if (p.pretestPct !== null) $('pretest').value = p.pretestPct;
+    $('resultSel').value = p.result;
     // 資訊卡
     $('testInfo').style.display = '';
     $('testInfo').innerHTML =
@@ -649,20 +556,19 @@
 
   // ── 複製 / 清除全部 ──
   $('copyBtn').addEventListener('click', () => {
-    const txt = $('summary').textContent;
-    const done = () => { const o = $('copyOk'); o.style.display = ''; setTimeout(() => o.style.display = 'none', 2000); };
-    const fallback = () => {
+    const legacyCopy = (txt) => {
       const ta = document.createElement('textarea');
       ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.focus(); ta.select();
-      try { document.execCommand('copy'); done(); } catch (e) {}
-      document.body.removeChild(ta);
+      try { return document.execCommand('copy'); } finally { document.body.removeChild(ta); }
     };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(done).catch(fallback);
-    } else {
-      fallback();
-    }
+    E.copyText($('summary').textContent, { clipboard: navigator.clipboard, legacyCopy }).then((ok) => {
+      const o = $('copyOk');
+      o.textContent = ok ? '已複製 ✓' : '複製失敗，請手動選取上方文字複製';
+      o.classList.toggle('fail', !ok);
+      o.style.display = '';
+      clearTimeout(o._t); o._t = setTimeout(() => o.style.display = 'none', ok ? 2000 : 5000);
+    });
   });
   $('clearAllBtn').addEventListener('click', () => {
     currentTest = null;

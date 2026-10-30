@@ -13,13 +13,14 @@
 - **指標計算**：由 2×2 人數或直接輸入 sens/spec → 敏感度、特異度、PPV、NPV、準確度、LR+、LR−（2×2 模式附 95% CI）
 - **LR 白話分級**：依 LR 大小自動標示「強／中／弱 rule-in / rule-out」（Jaeschke/McGee 標準）
 - **Bayes 更新**：pre-test → post-test probability，逐步顯示 odds 鏈
-- **互動 Fagan nomogram**：拖曳左軸即時更新，圖上標示前/後機率
+- **Fagan nomogram**：以滑桿調整檢驗前機率、連線即時更新；圖面本身唯讀（避免手機誤觸），圖上標示前/後機率
 - **常見檢驗 LR 速查庫**（`tests.json`）：16 筆附原始文獻出處，分「診斷／預後」載入
 - **白話結果總結**：一鍵複製（給病歷／教學）、清除全部
 
 ## 技術
 
-- 單檔 `index.html`（vanilla JS + SVG，無框架、無相依套件）
+- `index.html`（UI 與 SVG 繪圖）＋ `engine.js`（全部計算；UMD，`window.DxEbm`）——vanilla JS，無框架、無相依套件
+- 測試：`node engine.test.js`、`node ui.test.js`（純 Node，無相依）
 - 資料：`tests.json`（檢驗速查庫，單一來源、可擴充）
 - 風格：與個人臨床工具集 (pharmacy-portal) 一致的 MUJI 配色
 
@@ -34,7 +35,7 @@
 
 - LR+ = sens/(1−spec)；LR− = (1−sens)/spec
 - post-test odds = pre-test odds × LR；odds = p/(1−p)
-- 95% CI：LR 用 log 法 (Simel 1991)、比例用 Wilson score；零格加 0.5 連續性校正
+- 95% CI：LR 用 log 法 (Simel 1991)、比例用 Wilson score；任一格為 0 時四格各加 0.5 計算 LR 與其 CI（畫面標示）；整列或整欄為 0 時 LR 顯示「—」
 
 ## 免責
 
