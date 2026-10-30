@@ -3,7 +3,7 @@
  * Google Fonts 等跨來源資源不攔截，一律走網路。
  */
 const PREFIX = 'dx-ebm-calc-';
-const CACHE = `${PREFIX}v5`;
+const CACHE = `${PREFIX}v6`;
 const SHELL = [
   './',
   'index.html',
