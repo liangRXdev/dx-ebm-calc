@@ -47,7 +47,8 @@
     const d = 1 + z * z / n;
     const c = p + z * z / (2 * n);
     const s = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
-    return [(c - s) / d, (c + s) / d];
+    // 夾回 [0, 1]：x = 0 或 x = n 時理論端點恰為 0／1，浮點誤差會產生 -1e-17
+    return [Math.max(0, (c - s) / d), Math.min(1, (c + s) / d)];
   }
 
   // 零格時四格皆 +0.5（Haldane），供 LR 計算用

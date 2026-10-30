@@ -307,5 +307,17 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C3 sens 100 spec 0 LR− —', E.fromSensSpec('100', '0').lrNeg, NaN);
 })();
 
+// ── C4. Wilson 端點浮點誤差：0/n 下界不得顯示「-0.0%」──
+// 重現（修正前）：TP 0 / FP 3 / FN 5 / TN 20 → sens CI 顯示「CI -0.0%–43.4%」
+// Newcombe 1998 Table I：0/20 → 0–0.1611
+(() => {
+  const w = E.wilson(0, 20);
+  eq('C4 0/20 下界 ≥ 0', w[0] >= 0, true);
+  approx('C4 0/20 上界', w[1], 0.1611, 1e-4);
+  eq('C4 20/20 上界 ≤ 1', E.wilson(20, 20)[1] <= 1, true);
+  const r = E.fromCounts({ tp: 0, fp: 3, fn: 5, tn: 20 });
+  eq('C4 sens CI 下界顯示', E.pct(r.sensCI[0]), '0.0%');
+})();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
