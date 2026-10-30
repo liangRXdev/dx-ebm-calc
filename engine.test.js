@@ -413,6 +413,40 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('D 未註明的 LR 差異＝已知待決清單', pending.sort().join(), KNOWN_PENDING.slice().sort().join());
 })();
 
+// ── C9. 載入檢驗後，原文 pooled LR 與本頁推算 LR 不同時須並列說明 ──
+// 重現（修正前）：載入 Alvarado → 資訊卡與選單寫 LR+ 2.43／LR− 0.28（原文 pooled），
+// 指標卡與總結卻是 sens/spec 推算的 2.62／0.338，兩組數字並存且無說明
+(() => {
+  const T = require('./tests.json').tests;
+  const by = (id) => T.find((t) => t.id === id);
+  const statsOf = (t) => { const p = E.presetFromTest(t); return E.fromSensSpec(p.sensPct, p.specPct); };
+  const alv = by('alvarado-appendicitis');
+  const note = E.pooledLrNote(alv, statsOf(alv));
+  eq('C9 Alvarado 有說明', note.includes('原文 pooled LR+ 2.43') && note.includes('LR− 0.28'), true);
+  eq('C9 Alvarado 說明推算來源', note.includes('sens/spec 推算'), true);
+  // 差異只在原值的四捨五入位數內（Ottawa LR− 0.08 vs 0.076）不算不同
+  eq('C9 Ottawa 無說明', E.pooledLrNote(by('ottawa-ankle'), statsOf(by('ottawa-ankle'))), '');
+  eq('C9 無檢驗 → 空字串', E.pooledLrNote(null, statsOf(alv)), '');
+  // 全庫：只有到小數 2 位仍不同者才標示
+  const flagged = T.filter((t) => E.pooledLrNote(t, statsOf(t))).map((t) => t.id).sort().join();
+  eq('C9 全庫需說明者', flagged, 'alvarado-appendicitis,lactate-sepsis-mortality,ridt-influenza');
+  const p = E.presetFromTest(alv);
+  const s = E.summaryText(statsOf(alv), Object.assign(E.bayes(p.pretestPct, statsOf(alv).lrPos), { useNeg: false }), alv);
+  eq('C9 總結含 pooled 說明', s.includes('原文 pooled LR+ 2.43'), true);
+})();
+
+// ── C10. 載入檢驗後改了 sens/spec，綁定即失效 ──
+(() => {
+  const t = require('./tests.json').tests.find((x) => x.id === 'ottawa-ankle');
+  const p = E.presetFromTest(t);
+  eq('C10 帶入值不變 → 仍綁定', E.testBindingIntact(t, p.sensPct, p.specPct), true);
+  eq('C10 數值相同、寫法不同 → 仍綁定', E.testBindingIntact(t, ' ' + Number(p.sensPct) + '0', p.specPct), true);
+  eq('C10 改 sens → 解除', E.testBindingIntact(t, '90', p.specPct), false);
+  eq('C10 改 spec → 解除', E.testBindingIntact(t, p.sensPct, '50'), false);
+  eq('C10 清空 → 解除', E.testBindingIntact(t, '', p.specPct), false);
+  eq('C10 無檢驗 → false', E.testBindingIntact(null, p.sensPct, p.specPct), false);
+})();
+
 // ── C8. 複製：clipboard 失敗且 fallback 也失敗時，不得回報成功（非同步）──
 // 重現（修正前）：navigator.clipboard 被拒（非 HTTPS／權限）→ fallback execCommand('copy')
 // 回傳 false（未拋錯）→ 仍顯示「已複製 ✓」，實際剪貼簿是空的
