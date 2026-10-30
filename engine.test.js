@@ -380,5 +380,33 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C7 無零格不標示', t2.includes('校正'), false);
 })();
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+// ── C8. 複製：clipboard 失敗且 fallback 也失敗時，不得回報成功（非同步）──
+// 重現（修正前）：navigator.clipboard 被拒（非 HTTPS／權限）→ fallback execCommand('copy')
+// 回傳 false（未拋錯）→ 仍顯示「已複製 ✓」，實際剪貼簿是空的
+const asyncTests = [
+  async () => {
+    const reject = { writeText: () => Promise.reject(new Error('denied')) };
+    const accept = { writeText: () => Promise.resolve() };
+    eq('C8 clipboard 失敗 + fallback 失敗 → false',
+      await E.copyText('x', { clipboard: reject, legacyCopy: () => false }), false);
+    eq('C8 clipboard 失敗 + fallback 拋錯 → false',
+      await E.copyText('x', { clipboard: reject, legacyCopy: () => { throw new Error('x'); } }), false);
+    eq('C8 clipboard 失敗 + fallback 成功 → true',
+      await E.copyText('x', { clipboard: reject, legacyCopy: () => true }), true);
+    eq('C8 無 clipboard + fallback 失敗 → false', await E.copyText('x', { legacyCopy: () => false }), false);
+    let got = null;
+    eq('C8 clipboard 成功 → true',
+      await E.copyText('abc', { clipboard: { writeText: (t) => { got = t; return Promise.resolve(); } }, legacyCopy: () => false }), true);
+    eq('C8 寫入內容', got, 'abc');
+    eq('C8 clipboard 成功不呼叫 fallback',
+      await E.copyText('x', { clipboard: accept, legacyCopy: () => { throw new Error('不應呼叫'); } }), true);
+  },
+];
+
+(async () => {
+  for (const t of asyncTests) {
+    try { await t(); } catch (e) { console.log('FAIL  ' + e.message); fail++; }
+  }
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})();

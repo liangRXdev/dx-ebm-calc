@@ -112,6 +112,7 @@
       line-height: 1.7; background: #FBF8F2; border: 1px solid var(--border); border-radius: 6px;
       padding: 0.9rem 1rem; margin: 0 0 0.9rem; color: var(--text-primary); }
     .copy-ok { color: var(--accent-hover); font-size: 0.78rem; margin-left: 0.5rem; }
+    .copy-ok.fail { color: var(--danger); }
     input[type=range] { width: 100%; max-width: 320px; accent-color: var(--accent); }
 
     .field { margin: 0.75rem 0; }
@@ -297,7 +298,7 @@
     <div style="text-align:center;">
       <button class="btn solid" id="copyBtn">複製</button>
       <button class="btn" id="clearAllBtn">清除全部</button>
-      <span class="copy-ok" id="copyOk" style="display:none;">已複製 ✓</span>
+      <span class="copy-ok" id="copyOk" role="status" style="display:none;">已複製 ✓</span>
     </div>
   </section>
 
@@ -553,20 +554,19 @@
 
   // ── 複製 / 清除全部 ──
   $('copyBtn').addEventListener('click', () => {
-    const txt = $('summary').textContent;
-    const done = () => { const o = $('copyOk'); o.style.display = ''; setTimeout(() => o.style.display = 'none', 2000); };
-    const fallback = () => {
+    const legacyCopy = (txt) => {
       const ta = document.createElement('textarea');
       ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
       document.body.appendChild(ta); ta.focus(); ta.select();
-      try { document.execCommand('copy'); done(); } catch (e) {}
-      document.body.removeChild(ta);
+      try { return document.execCommand('copy'); } finally { document.body.removeChild(ta); }
     };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(done).catch(fallback);
-    } else {
-      fallback();
-    }
+    E.copyText($('summary').textContent, { clipboard: navigator.clipboard, legacyCopy }).then((ok) => {
+      const o = $('copyOk');
+      o.textContent = ok ? '已複製 ✓' : '複製失敗，請手動選取上方文字複製';
+      o.classList.toggle('fail', !ok);
+      o.style.display = '';
+      clearTimeout(o._t); o._t = setTimeout(() => o.style.display = 'none', ok ? 2000 : 5000);
+    });
   });
   $('clearAllBtn').addEventListener('click', () => {
     currentTest = null;

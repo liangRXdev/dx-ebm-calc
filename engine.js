@@ -259,10 +259,23 @@
     return { dir: diff >= 0 ? 'up' : 'down', arrow: diff >= 0 ? '▲' : '▼', abs: Math.abs(diff).toFixed(1) };
   }
 
+  // ── 複製到剪貼簿 ──
+  // env.clipboard：navigator.clipboard（可缺）；env.legacyCopy(text)：execCommand('copy') 版，
+  // 回傳是否成功。execCommand 失敗多半回 false 而非拋錯，必須看回傳值。
+  // 回傳 Promise<boolean>，UI 依此顯示「已複製」或失敗提示。
+  function copyText(text, env) {
+    const legacy = () => {
+      try { return !!(env.legacyCopy && env.legacyCopy(text)); } catch (e) { return false; }
+    };
+    const cb = env.clipboard;
+    if (cb && cb.writeText) return cb.writeText(text).then(() => true, legacy);
+    return Promise.resolve(legacy());
+  }
+
   return {
     z, parseCount, parsePct, pct, num, wilson, correctCounts, fromCounts, fromSensSpec,
     interpretPos, interpretNeg, postProb, bayes, deltaParts,
     NOMO, logit, leftY, rightY, lrY, probFromLeftY, probFromRightY, lrFromY, nomoPoints,
-    isPrognostic, presetFromTest, summaryText,
+    isPrognostic, presetFromTest, summaryText, copyText,
   };
 });
