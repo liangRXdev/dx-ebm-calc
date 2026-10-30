@@ -380,6 +380,39 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C7 無零格不標示', t2.includes('校正'), false);
 })();
 
+// ══ D. tests.json 資料紀律（CLAUDE.md）══
+// 硬性欄位缺漏 → FAIL。lrPos/lrNeg 與 sens/spec 推算值不符且 note 未註明（原文／pooled）
+// → 只列為待決（不改數值），但清單須與 KNOWN_PENDING 完全一致：新增未註明的檢驗會紅。
+(() => {
+  const data = require('./tests.json');
+  const T = data.tests;
+  eq('D meta.lastUpdated 為 YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(data.meta.lastUpdated), true);
+  const filled = (v) => typeof v === 'string' && v.trim() !== '';
+  T.forEach((t) => {
+    ['source', 'sourceUrl', 'threshold', 'population'].forEach((k) => eq(`D ${t.id} ${k} 不為空`, filled(t[k]), true));
+    eq(`D ${t.id} sourceUrl 為 https`, /^https:\/\//.test(t.sourceUrl), true);
+    eq(`D ${t.id} sens/spec 在 (0,1)`, t.sens > 0 && t.sens < 1 && t.spec > 0 && t.spec < 1, true);
+  });
+  eq('D id 不重複', new Set(T.map((t) => t.id)).size, T.length);
+
+  // 推算值四捨五入到原值的小數位數（至少 2 位）後應相等；否則須在 note 註明
+  const decimals = (x) => Math.max(2, (String(x).split('.')[1] || '').length);
+  const same = (stored, derived) => Number(derived.toFixed(decimals(stored))) === stored;
+  const KNOWN_PENDING = [
+    // 待決（不改值，需回原文確認後補 note 或修正）：
+    'lactate-sepsis-mortality lrPos', // 2.0 vs 0.51/(1−0.75) = 2.04；AFP 2021 POEM 原文 LR？
+    'ridt-influenza lrPos',           // 34.5 vs 0.623/(1−0.982) = 34.61；Chartrand 2012 pooled LR+？
+  ];
+  const pending = [];
+  T.forEach((t) => {
+    const noted = /原文|pooled/i.test(t.note || '');
+    if (!same(t.lrPos, t.sens / (1 - t.spec)) && !noted) pending.push(`${t.id} lrPos`);
+    if (!same(t.lrNeg, (1 - t.sens) / t.spec) && !noted) pending.push(`${t.id} lrNeg`);
+  });
+  pending.forEach((p) => console.log(`WARN  待決：${p} 與 sens/spec 推算值不符且 note 未註明`));
+  eq('D 未註明的 LR 差異＝已知待決清單', pending.sort().join(), KNOWN_PENDING.slice().sort().join());
+})();
+
 // ── C8. 複製：clipboard 失敗且 fallback 也失敗時，不得回報成功（非同步）──
 // 重現（修正前）：navigator.clipboard 被拒（非 HTTPS／權限）→ fallback execCommand('copy')
 // 回傳 false（未拋錯）→ 仍顯示「已複製 ✓」，實際剪貼簿是空的
