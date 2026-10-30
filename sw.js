@@ -1,12 +1,13 @@
 /* dx-ebm-calc Service Worker
- * 快取應用 shell（index.html / tests.json / manifest / 圖示）。
+ * 快取應用 shell（index.html / engine.js / tests.json / manifest / 圖示）。
  * Google Fonts 等跨來源資源不攔截，一律走網路。
  */
 const PREFIX = 'dx-ebm-calc-';
-const CACHE = `${PREFIX}v4`;
+const CACHE = `${PREFIX}v5`;
 const SHELL = [
   './',
   'index.html',
+  'engine.js',
   'tests.json',
   'manifest.webmanifest',
   'icons/icon-192.png',
