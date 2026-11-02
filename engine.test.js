@@ -401,7 +401,6 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   const KNOWN_PENDING = [
     // 待決（不改值，需回原文確認後補 note 或修正）：
     'lactate-sepsis-mortality lrPos', // 2.0 vs 0.51/(1−0.75) = 2.04；AFP 2021 POEM 原文 LR？
-    'ridt-influenza lrPos',           // 34.5 vs 0.623/(1−0.982) = 34.61；Chartrand 2012 pooled LR+？
   ];
   const pending = [];
   T.forEach((t) => {
