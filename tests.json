@@ -202,7 +202,7 @@
       "population": "疑似流感（成人 sens 約 54%、兒童約 67%）",
       "source": "Chartrand C, et al. Ann Intern Med 2012;156(7):500-11（159 studies / 26 RIDTs）",
       "sourceUrl": "https://www.acpjournals.org/doi/10.7326/0003-4819-156-7-201204030-00403",
-      "note": "高 spec → 陽性可 rule-in（LR+ 34.5）；但 sens 僅 62%、LR− 0.38 → 陰性無法排除流感。此為『傳統抗原 RIDT』，分子法 (RT-PCR/NAAT) 敏感度高得多。"
+      "note": "LR+ 34.5、LR− 0.38 為原文 pooled 值（Chartrand 2012 摘要；與由 sens/spec 推算略有差異）。高 spec → 陽性可 rule-in（LR+ 34.5）；但 sens 僅 62%、LR− 0.38 → 陰性無法排除流感。此為『傳統抗原 RIDT』，分子法 (RT-PCR/NAAT) 敏感度高得多。"
     },
     {
       "id": "ca125-ovarian",
