@@ -185,7 +185,7 @@
       "population": "敗血症/敗血性休克成人",
       "source": "Serum Lactate Testing to Predict Mortality in Patients With Sepsis. Am Fam Physician 2021;103(5):309（POEM 綜整）",
       "sourceUrl": "https://www.aafp.org/pubs/afp/issues/2021/0301/p309.html",
-      "note": "⚠ 此為『預後（死亡預測）』而非『診斷』的 LR，與其他筆用途不同軸，勿混用。乳酸清除率 (clearance) 表現較佳：sens 67% / spec 73% / LR+ 2.52 / LR− 0.45。"
+      "note": "⚠ 此為『預後（死亡預測）』而非『診斷』的 LR，與其他筆用途不同軸，勿混用。LR+ 2.0／LR− 0.65 為原文報告值（AFP 2021 引 Mikkelsen 等單一世代研究；sens/spec 推算 LR+ 為 2.04，差異來自原文取一位小數）。乳酸清除率 (clearance) 表現較佳：sens 67% / spec 73% / LR+ 2.52 / LR− 0.45。"
     },
     {
       "id": "ridt-influenza",
