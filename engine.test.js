@@ -399,8 +399,8 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   const decimals = (x) => Math.max(2, (String(x).split('.')[1] || '').length);
   const same = (stored, derived) => Number(derived.toFixed(decimals(stored))) === stored;
   const KNOWN_PENDING = [
-    // 待決（不改值，需回原文確認後補 note 或修正）：
-    'lactate-sepsis-mortality lrPos', // 2.0 vs 0.51/(1−0.75) = 2.04；AFP 2021 POEM 原文 LR？
+    // 待決（不改值，需回原文確認後補 note 或修正）：目前無。
+    // lactate-sepsis-mortality lrPos 2.0 vs 推算 2.04：2026-11-04 已核 AFP 2021;103(5):309 原文，2.0 即原文報告值，已補 note
   ];
   const pending = [];
   T.forEach((t) => {
