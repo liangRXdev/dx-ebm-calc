@@ -412,7 +412,7 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('D 未註明的 LR 差異＝已知待決清單', pending.sort().join(), KNOWN_PENDING.slice().sort().join());
 })();
 
-// ── C9. 載入檢驗後，原文 pooled LR 與本頁推算 LR 不同時須並列說明 ──
+// ── C9. 載入檢驗後，原文報告 LR 與本頁推算 LR 不同時須並列說明 ──
 // 重現（修正前）：載入 Alvarado → 資訊卡與選單寫 LR+ 2.43／LR− 0.28（原文 pooled），
 // 指標卡與總結卻是 sens/spec 推算的 2.62／0.338，兩組數字並存且無說明
 (() => {
@@ -421,7 +421,7 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   const statsOf = (t) => { const p = E.presetFromTest(t); return E.fromSensSpec(p.sensPct, p.specPct); };
   const alv = by('alvarado-appendicitis');
   const note = E.pooledLrNote(alv, statsOf(alv));
-  eq('C9 Alvarado 有說明', note.includes('原文 pooled LR+ 2.43') && note.includes('LR− 0.28'), true);
+  eq('C9 Alvarado 有說明', note.includes('原文報告 LR+ 2.43') && note.includes('LR− 0.28'), true);
   eq('C9 Alvarado 說明推算來源', note.includes('sens/spec 推算'), true);
   // 差異只在原值的四捨五入位數內（Ottawa LR− 0.08 vs 0.076）不算不同
   eq('C9 Ottawa 無說明', E.pooledLrNote(by('ottawa-ankle'), statsOf(by('ottawa-ankle'))), '');
@@ -431,7 +431,11 @@ function fmt(x) { return typeof x === 'number' ? (isFinite(x) ? x.toFixed(4) : S
   eq('C9 全庫需說明者', flagged, 'alvarado-appendicitis,lactate-sepsis-mortality,ridt-influenza');
   const p = E.presetFromTest(alv);
   const s = E.summaryText(statsOf(alv), Object.assign(E.bayes(p.pretestPct, statsOf(alv).lrPos), { useNeg: false }), alv);
-  eq('C9 總結含 pooled 說明', s.includes('原文 pooled LR+ 2.43'), true);
+  eq('C9 總結含 pooled 說明', s.includes('原文報告 LR+ 2.43'), true);
+  // 單一世代研究（Lactate，AFP 2021 引 Mikkelsen）不是 pooled，說明不得寫 pooled
+  const lacNote = E.pooledLrNote(by('lactate-sepsis-mortality'), statsOf(by('lactate-sepsis-mortality')));
+  eq('C9 Lactate 說明不寫 pooled', /pooled/i.test(lacNote), false);
+  eq('C9 Lactate 說明含原文值', lacNote.includes('原文報告 LR+ 2'), true);
 })();
 
 // ── C10. 載入檢驗後改了 sens/spec，綁定即失效 ──

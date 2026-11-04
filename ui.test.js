@@ -169,13 +169,13 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
     eq('U5 改 spec → 解除', A.els.summary.textContent.includes('渥太華'), false);
   }
 
-  // ── U6. 載入 Alvarado：LR 卡標示原文 pooled 值 ──
+  // ── U6. 載入 Alvarado：LR 卡標示原文報告值 ──
   {
     const A = makeApp(); await tick();
     A.set('testLoader', A.testsJson.tests.findIndex((t) => t.id === 'alvarado-appendicitis'));
-    eq('U6 LR 卡含 pooled 說明', A.els.results.innerHTML.includes('原文 pooled LR+ 2.43'), true);
+    eq('U6 LR 卡含 pooled 說明', A.els.results.innerHTML.includes('原文報告 LR+ 2.43'), true);
     A.set('testLoader', A.testsJson.tests.findIndex((t) => t.id === 'ottawa-ankle'));
-    eq('U6 Ottawa 無 pooled 說明', A.els.results.innerHTML.includes('原文 pooled'), false);
+    eq('U6 Ottawa 無 pooled 說明', A.els.results.innerHTML.includes('原文報告'), false);
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
