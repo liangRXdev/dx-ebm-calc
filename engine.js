@@ -217,12 +217,13 @@
     return same(sensPct, p.sensPct) && same(specPct, p.specPct);
   }
 
-  // 原文 pooled LR 與本頁由 sens/spec 推算的 LR，到小數 2 位仍不同時回傳說明；否則空字串
+  // 原文報告的 LR（可能是 pooled，也可能是單一研究）與本頁由 sens/spec 推算的 LR，
+  // 到小數 2 位仍不同時回傳說明；否則空字串。用字不寫 pooled：不是每筆都來自統合分析
   function pooledLrNote(t, s) {
     if (!t || !s) return '';
     const differs = (stored, calc) => isFinite(stored) && isFinite(calc) && stored.toFixed(2) !== calc.toFixed(2);
     if (!differs(t.lrPos, s.lrPos) && !differs(t.lrNeg, s.lrNeg)) return '';
-    return `原文 pooled LR+ ${t.lrPos}、LR− ${t.lrNeg}；本頁 LR 由 sens/spec 推算，兩者可能不同`;
+    return `原文報告 LR+ ${t.lrPos}、LR− ${t.lrNeg}；本頁 LR 由 sens/spec 推算，兩者可能不同`;
   }
 
   // ── 白話結果總結 ──
